@@ -275,49 +275,49 @@ const Sessions = () => {
             {/* Action Modal */}
             {activeAction && (
                 <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div className="modal-content glass-panel animate-fade-in" style={{ width: '100%', maxWidth: '500px', backgroundColor: 'var(--panel-bg)', borderRadius: 'var(--radius-lg)', padding: '24px' }}>
+                    <div className="modal-content animate-fade-in" style={{ width: '100%', maxWidth: '500px', backgroundColor: '#ffffff', color: '#1e293b', boxShadow: '0 20px 40px rgba(0,0,0,0.2)', borderRadius: '16px', padding: '24px' }}>
                         <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                            <h2 className="h2" style={{ margin: 0 }}>
+                            <h2 className="h2" style={{ margin: 0, color: '#0f172a', fontSize: '1.5rem', fontWeight: '600' }}>
                                 {activeAction.type === 'message' && `Message ${activeAction.session.student}`}
                                 {activeAction.type === 'materials' && `Materials for ${activeAction.session.topic}`}
                                 {activeAction.type === 'notes' && `Private Notes: ${activeAction.session.student}`}
                                 {activeAction.type === 'report' && `Session Report: ${activeAction.session.student}`}
                             </h2>
-                            <button className="icon-btn" onClick={() => setActiveAction(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><FiX size={24} /></button>
+                            <button className="icon-btn" onClick={() => setActiveAction(null)} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer' }}><FiX size={24} /></button>
                         </div>
                         <div className="modal-body text-center">
                             {activeAction.type === 'message' && (
                                 <div style={{ display: 'flex', gap: '8px' }}>
-                                    <input type="text" className="form-input" style={{ flex: 1 }} placeholder="Type a message..." />
-                                    <button className="btn btn-primary" onClick={() => { alert('Message sent!'); setActiveAction(null); }}>Send</button>
+                                    <input type="text" className="form-input" style={{ flex: 1, backgroundColor: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1' }} placeholder="Type a message..." />
+                                    <button className="btn btn-primary" style={{ backgroundColor: '#3b82f6', color: 'white', border: 'none' }} onClick={() => { alert('Message sent!'); setActiveAction(null); }}>Send</button>
                                 </div>
                             )}
                             {activeAction.type === 'materials' && (
-                                <div className="border border-white-10 rounded p-4 border-dashed" style={{ border: '2px dashed rgba(255,255,255,0.1)', borderRadius: '8px', padding: '32px' }}>
-                                    <FiFileText size={32} className="mx-auto mb-2 opacity-50" style={{ color: 'var(--text-muted)', margin: '0 auto 12px' }} />
-                                    <p className="text-muted mb-4">No materials uploaded yet.</p>
-                                    <button className="btn btn-secondary">Upload File</button>
+                                <div style={{ border: '2px dashed #cbd5e1', borderRadius: '8px', padding: '32px', backgroundColor: '#f8fafc' }}>
+                                    <FiFileText size={32} style={{ color: '#94a3b8', margin: '0 auto 12px' }} />
+                                    <p style={{ color: '#64748b', marginBottom: '16px' }}>No materials uploaded yet.</p>
+                                    <button className="btn btn-secondary" style={{ backgroundColor: 'white', color: '#334155', border: '1px solid #e2e8f0' }}>Upload File</button>
                                 </div>
                             )}
                             {activeAction.type === 'notes' && (
                                 <div>
-                                    <textarea className="form-input" style={{ width: '100%', height: '120px', resize: 'vertical', marginBottom: '12px' }} placeholder="Write internal notes here..."></textarea>
-                                    <button className="btn btn-primary" onClick={() => { alert('Note saved!'); setActiveAction(null); }}>Save Note</button>
+                                    <textarea className="form-input" style={{ width: '100%', height: '120px', resize: 'vertical', marginBottom: '12px', backgroundColor: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1' }} placeholder="Write internal notes here..."></textarea>
+                                    <button className="btn btn-primary" style={{ backgroundColor: '#3b82f6', color: 'white', border: 'none' }} onClick={() => { alert('Note saved!'); setActiveAction(null); }}>Save Note</button>
                                 </div>
                             )}
                             {activeAction.type === 'report' && (
-                                <div style={{ textAlign: 'left', color: 'var(--text-main)', fontSize: '0.95rem' }}>
-                                    <div style={{ marginBottom: '12px' }}><span style={{ color: 'var(--text-muted)', fontWeight: 600, display: 'inline-block', width: '90px' }}>Status:</span> <span className={`badge-pill ${getStatusClass(activeAction.session.status)}`}>{activeAction.session.status}</span></div>
-                                    <div style={{ marginBottom: '12px' }}><span style={{ color: 'var(--text-muted)', fontWeight: 600, display: 'inline-block', width: '90px' }}>Attendance:</span> Present</div>
-                                    <div style={{ marginBottom: '12px' }}><span style={{ color: 'var(--text-muted)', fontWeight: 600, display: 'inline-block', width: '90px' }}>Score:</span> 92% (Excellent)</div>
+                                <div style={{ textAlign: 'left', color: '#334155', fontSize: '0.95rem' }}>
+                                    <div style={{ marginBottom: '12px' }}><span style={{ color: '#64748b', fontWeight: 600, display: 'inline-block', width: '100px' }}>Status:</span> <span className={`badge-pill ${getStatusClass(activeAction.session.status)}`}>{activeAction.session.status}</span></div>
+                                    <div style={{ marginBottom: '12px' }}><span style={{ color: '#64748b', fontWeight: 600, display: 'inline-block', width: '100px' }}>Attendance:</span> <span style={{ color: '#10b981', fontWeight: 500 }}>Present</span></div>
+                                    <div style={{ marginBottom: '16px' }}><span style={{ color: '#64748b', fontWeight: 600, display: 'inline-block', width: '100px' }}>Score:</span> 92% (Excellent)</div>
                                     <div style={{ marginBottom: '24px' }}>
-                                        <span style={{ color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Tutor Notes:</span>
-                                        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                            Student demonstrated a strong understanding of the core concepts during the session. Highly engaged.
+                                        <span style={{ color: '#64748b', fontWeight: 600, display: 'block', marginBottom: '8px' }}>Tutor Notes:</span>
+                                        <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0', color: '#1e293b', lineHeight: '1.5' }}>
+                                            Student demonstrated a strong understanding of the core concepts during the session. Highly engaged and solved the advanced problems efficiently!
                                         </div>
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                        <button className="btn btn-primary" onClick={() => setActiveAction(null)}>Done</button>
+                                        <button className="btn btn-primary" style={{ backgroundColor: '#3b82f6', color: 'white', border: 'none' }} onClick={() => setActiveAction(null)}>Done</button>
                                     </div>
                                 </div>
                             )}
