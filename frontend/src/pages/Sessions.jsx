@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
     FiChevronLeft, FiChevronRight, FiCalendar, FiVideo, FiMapPin,
-    FiCheckCircle, FiClock, FiMessageCircle, FiFileText, FiBookOpen
+    FiCheckCircle, FiClock, FiMessageCircle, FiFileText, FiBookOpen, FiX
 } from 'react-icons/fi';
 import './Sessions.css';
 
@@ -75,6 +75,7 @@ const Sessions = () => {
         mode: 'All',
         status: 'All'
     });
+    const [activeAction, setActiveAction] = useState(null); // { type, session }
 
     // Date Navigation
     const handlePrevDay = () => {
@@ -242,9 +243,9 @@ const Sessions = () => {
                                 {/* Actions */}
                                 <div className="session-actions flex gap-3 items-center shrink-0">
                                     <div className="secondary-actions flex gap-2 mr-2 border-r pr-4 border-white-10">
-                                        <button className="icon-btn-small tooltip-wrap" title="Message Student" onClick={() => alert(`Messaging ${sess.student}...`)}><FiMessageCircle size={16} /></button>
-                                        <button className="icon-btn-small tooltip-wrap" title="Lesson Materials" onClick={() => alert(`Opening materials for ${sess.topic}...`)}><FiFileText size={16} /></button>
-                                        <button className="icon-btn-small tooltip-wrap" title="Private Notes" onClick={() => alert(`Opening private notes for ${sess.student}...`)}><FiBookOpen size={16} /></button>
+                                        <button className="icon-btn-small tooltip-wrap" title="Message Student" onClick={() => setActiveAction({ type: 'message', session: sess })}><FiMessageCircle size={16} /></button>
+                                        <button className="icon-btn-small tooltip-wrap" title="Lesson Materials" onClick={() => setActiveAction({ type: 'materials', session: sess })}><FiFileText size={16} /></button>
+                                        <button className="icon-btn-small tooltip-wrap" title="Private Notes" onClick={() => setActiveAction({ type: 'notes', session: sess })}><FiBookOpen size={16} /></button>
                                     </div>
 
                                     {sess.status === 'Scheduled' || sess.status === 'Live' ? (
@@ -256,7 +257,7 @@ const Sessions = () => {
                                             <FiCheckCircle className="mr-2" /> Mark Attendance
                                         </button>
                                     ) : sess.status === 'Completed' ? (
-                                        <button className="btn btn-secondary" onClick={() => alert(`Viewing report for ${sess.student}'s session.`)}>
+                                        <button className="btn btn-secondary" onClick={() => setActiveAction({ type: 'report', session: sess })}>
                                             <FiFileText className="mr-2" /> View Report
                                         </button>
                                     ) : (
@@ -270,6 +271,60 @@ const Sessions = () => {
                     ))
                 )}
             </div>
+
+            {/* Action Modal */}
+            {activeAction && (
+                <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div className="modal-content glass-panel animate-fade-in" style={{ width: '100%', maxWidth: '500px', backgroundColor: 'var(--panel-bg)', borderRadius: 'var(--radius-lg)', padding: '24px' }}>
+                        <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                            <h2 className="h2" style={{ margin: 0 }}>
+                                {activeAction.type === 'message' && `Message ${activeAction.session.student}`}
+                                {activeAction.type === 'materials' && `Materials for ${activeAction.session.topic}`}
+                                {activeAction.type === 'notes' && `Private Notes: ${activeAction.session.student}`}
+                                {activeAction.type === 'report' && `Session Report: ${activeAction.session.student}`}
+                            </h2>
+                            <button className="icon-btn" onClick={() => setActiveAction(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><FiX size={24} /></button>
+                        </div>
+                        <div className="modal-body text-center">
+                            {activeAction.type === 'message' && (
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <input type="text" className="form-input" style={{ flex: 1 }} placeholder="Type a message..." />
+                                    <button className="btn btn-primary" onClick={() => { alert('Message sent!'); setActiveAction(null); }}>Send</button>
+                                </div>
+                            )}
+                            {activeAction.type === 'materials' && (
+                                <div className="border border-white-10 rounded p-4 border-dashed" style={{ border: '2px dashed rgba(255,255,255,0.1)', borderRadius: '8px', padding: '32px' }}>
+                                    <FiFileText size={32} className="mx-auto mb-2 opacity-50" style={{ color: 'var(--text-muted)', margin: '0 auto 12px' }} />
+                                    <p className="text-muted mb-4">No materials uploaded yet.</p>
+                                    <button className="btn btn-secondary">Upload File</button>
+                                </div>
+                            )}
+                            {activeAction.type === 'notes' && (
+                                <div>
+                                    <textarea className="form-input" style={{ width: '100%', height: '120px', resize: 'vertical', marginBottom: '12px' }} placeholder="Write internal notes here..."></textarea>
+                                    <button className="btn btn-primary" onClick={() => { alert('Note saved!'); setActiveAction(null); }}>Save Note</button>
+                                </div>
+                            )}
+                            {activeAction.type === 'report' && (
+                                <div style={{ textAlign: 'left', color: 'var(--text-main)', fontSize: '0.95rem' }}>
+                                    <div style={{ marginBottom: '12px' }}><span style={{ color: 'var(--text-muted)', fontWeight: 600, display: 'inline-block', width: '90px' }}>Status:</span> <span className={`badge-pill ${getStatusClass(activeAction.session.status)}`}>{activeAction.session.status}</span></div>
+                                    <div style={{ marginBottom: '12px' }}><span style={{ color: 'var(--text-muted)', fontWeight: 600, display: 'inline-block', width: '90px' }}>Attendance:</span> Present</div>
+                                    <div style={{ marginBottom: '12px' }}><span style={{ color: 'var(--text-muted)', fontWeight: 600, display: 'inline-block', width: '90px' }}>Score:</span> 92% (Excellent)</div>
+                                    <div style={{ marginBottom: '24px' }}>
+                                        <span style={{ color: 'var(--text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Tutor Notes:</span>
+                                        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                            Student demonstrated a strong understanding of the core concepts during the session. Highly engaged.
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                        <button className="btn btn-primary" onClick={() => setActiveAction(null)}>Done</button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
