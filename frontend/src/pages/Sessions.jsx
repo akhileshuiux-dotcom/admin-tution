@@ -66,9 +66,12 @@ const MOCK_SESSIONS = [
 
 const DEMO_STUDENTS = [
     { id: 'STU001', name: 'Alex Johnson', grade: 'Grade 10' },
-    { id: 'STU002', name: 'Sarah Smith', grade: 'Grade 11 (Physics)' },
-    { id: 'STU003', name: 'Lucas Martinez', grade: 'Grade 12 (Chemistry)' },
-    { id: 'STU004', name: 'Emma Wilson', grade: 'Grade 9' }
+    { id: 'STU002', name: 'Sarah Smith', grade: 'Grade 11' },
+    { id: 'STU003', name: 'Lucas Martinez', grade: 'Grade 12' },
+    { id: 'STU004', name: 'Emma Wilson', grade: 'Grade 9' },
+    { id: 'STU005', name: 'Michael Brown', grade: 'Grade 10' },
+    { id: 'STU006', name: 'Sophia Davis', grade: 'Grade 11' },
+    { id: 'STU007', name: 'Oliver Garcia', grade: 'Grade 8' }
 ];
 
 const Sessions = () => {
