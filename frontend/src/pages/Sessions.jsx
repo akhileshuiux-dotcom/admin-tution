@@ -331,7 +331,22 @@ const Sessions = () => {
                                 <div style={{ textAlign: 'left', color: '#334155', fontSize: '0.95rem' }}>
                                     <div style={{ marginBottom: '12px' }}>
                                         <label style={{ display: 'block', marginBottom: '4px', color: '#64748b', fontSize: '0.85rem' }}>Student Name</label>
-                                        <input type="text" className="form-input" style={{ width: '100%', backgroundColor: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1' }} placeholder="Enter student name" />
+                                        <input type="text" className="form-input" style={{ width: '100%', backgroundColor: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1' }} placeholder="Enter student name (Grade will auto-fill)" />
+                                    </div>
+                                    <div style={{ marginBottom: '12px', display: 'flex', gap: '12px' }}>
+                                        <div style={{ flex: 1 }}>
+                                            <label style={{ display: 'block', marginBottom: '4px', color: '#64748b', fontSize: '0.85rem' }}>Grade / Class</label>
+                                            <input type="text" className="form-input" style={{ width: '100%', backgroundColor: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1' }} placeholder="e.g. Grade 10" />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <label style={{ display: 'block', marginBottom: '4px', color: '#64748b', fontSize: '0.85rem' }}>Assign Tutor</label>
+                                            <select className="form-input" style={{ width: '100%', backgroundColor: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1' }}>
+                                                <option value="">Select Tutor...</option>
+                                                <option value="Dr. Emily Chen">Dr. Emily Chen</option>
+                                                <option value="James Wilson">James Wilson</option>
+                                                <option value="Priya Sharma">Priya Sharma</option>
+                                            </select>
+                                        </div>
                                     </div>
                                     <div style={{ marginBottom: '12px', display: 'flex', gap: '12px' }}>
                                         <div style={{ flex: 1 }}>
