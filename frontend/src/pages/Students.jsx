@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FiUserPlus, FiFilter, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import './Enquiries.css';
-import axios from 'axios';
+import api from '../api';
 
 const MOCK_STUDENTS = [
     { id: 'STU001', name: 'Alex Johnson', grade: 'Grade 10', subject: 'Maths, Science', enrolledDate: '2026-03-01', status: 'Active', tutor: 'Sarah Jenkins' },
@@ -23,7 +23,7 @@ const Students = () => {
         const fetchStudents = async () => {
             const offlineStudents = JSON.parse(localStorage.getItem('offlineStudents') || '[]');
             try {
-                const res = await axios.get('http://localhost:5000/api/students');
+                const res = await api.get('/students');
                 const fetched = res.data.map(stu => ({
                     id: 'STU' + stu._id.substring(stu._id.length - 4).toUpperCase(),
                     name: stu.fullName,

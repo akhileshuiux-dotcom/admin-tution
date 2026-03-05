@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FiX } from 'react-icons/fi';
 import './NewEnquiryModal.css';
-import axios from 'axios';
+import api from '../api';
 
 const CompleteEnrollmentModal = ({ isOpen, onClose, enquiry, onComplete }) => {
     const [formData, setFormData] = useState({
@@ -39,7 +39,7 @@ const CompleteEnrollmentModal = ({ isOpen, onClose, enquiry, onComplete }) => {
                 { _id: '4', fullName: 'Michael Chen' }
             ];
             try {
-                const res = await axios.get('http://localhost:5000/api/tutors');
+                const res = await api.get('/tutors');
                 if (res.data && res.data.length > 0) {
                     setTutors(res.data);
                 } else {

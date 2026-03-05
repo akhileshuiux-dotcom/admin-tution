@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import './Enquiries.css';
 import NewEnquiryModal from '../components/NewEnquiryModal';
 import CompleteEnrollmentModal from '../components/CompleteEnrollmentModal';
-import axios from 'axios';
+import api from '../api';
 
 const MOCK_ENQUIRIES = [
     { id: 'ENQ001', studentName: 'Alex Johnson', grade: 'Grade 10', subject: 'Maths', status: 'New', date: '2026-03-01' },
@@ -22,7 +22,7 @@ const Enquiries = () => {
     useEffect(() => {
         const fetchEnquiries = async () => {
             try {
-                const res = await axios.get('http://localhost:5000/api/enquiries');
+                const res = await api.get('/enquiries');
                 const fetched = res.data.map(enq => ({
                     id: enq._id.substring(enq._id.length - 6).toUpperCase(),
                     studentName: enq.studentName,
@@ -55,7 +55,7 @@ const Enquiries = () => {
             if (editId) {
                 const isMock = editId.startsWith('ENQ');
                 if (!isMock) {
-                    await axios.put(`http://localhost:5000/api/enquiries/${editId}`, payload);
+                    await api.put(`/enquiries/${editId}`, payload);
                 }
 
                 setEnquiries(prev => prev.map(enq => {
@@ -71,7 +71,7 @@ const Enquiries = () => {
                     return enq;
                 }));
             } else {
-                const res = await axios.post('http://localhost:5000/api/enquiries', payload);
+                const res = await api.post('/enquiries', payload);
                 const newTableEntry = {
                     id: res.data._id.substring(res.data._id.length - 6).toUpperCase(),
                     studentName: res.data.studentName,
@@ -119,7 +119,7 @@ const Enquiries = () => {
 
         try {
             if (dbId) {
-                await axios.delete(`http://localhost:5000/api/enquiries/${dbId}`);
+                await api.delete(`/enquiries/${dbId}`);
             }
             setEnquiries(prev => prev.filter(e => e.id !== id));
         } catch (err) {
@@ -145,7 +145,7 @@ const Enquiries = () => {
             if (newStatus === 'Failed') payload.failureReason = failureReason;
 
             if (enquiry.fullData?._id && !enquiry.id.startsWith('ENQ')) {
-                await axios.put(`http://localhost:5000/api/enquiries/${enquiry.fullData._id}`, payload);
+                await api.put(`/enquiries/${enquiry.fullData._id}`, payload);
             }
 
             setEnquiries(prev => prev.map(e =>
@@ -180,9 +180,9 @@ const Enquiries = () => {
 
             if (enquiry.fullData?._id && !enquiry.id.startsWith('ENQ')) {
                 // Post to students module
-                await axios.post('http://localhost:5000/api/students', studentPayload);
+                await api.post('/students', studentPayload);
                 // Update enquiry status to completed
-                await axios.put(`http://localhost:5000/api/enquiries/${enquiry.fullData._id}`, { status: 'Completed', failureReason: '' });
+                await api.put(`/enquiries/${enquiry.fullData._id}`, { status: 'Completed', failureReason: '' });
             }
 
             // Update local state just in case user goes back
