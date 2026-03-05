@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import './Enquiries.css';
 import NewEnquiryModal from '../components/NewEnquiryModal';
 import CompleteEnrollmentModal from '../components/CompleteEnrollmentModal';
+import { useSearch } from '../context/SearchContext';
 import api from '../api';
 
 const MOCK_ENQUIRIES = [
@@ -20,6 +21,7 @@ const Enquiries = () => {
     const [enrollmentModalData, setEnrollmentModalData] = useState(null);
     const [showFilters, setShowFilters] = useState(false);
     const [filters, setFilters] = useState({ studentName: '', grade: '', status: '' });
+    const { searchQuery } = useSearch();
 
     useEffect(() => {
         const fetchEnquiries = async () => {
@@ -243,7 +245,14 @@ const Enquiries = () => {
     };
 
     const filteredEnquiries = enquiries.filter(enq => {
-        return (
+        const matchesGlobalSearch = searchQuery === '' ||
+            enq.studentName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            enq.grade?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            enq.subject?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            enq.status?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            enq.id?.toLowerCase().includes(searchQuery.toLowerCase());
+
+        return matchesGlobalSearch && (
             (filters.studentName === '' || enq.studentName.toLowerCase().includes(filters.studentName.toLowerCase())) &&
             (filters.grade === '' || (enq.grade && enq.grade.toLowerCase().includes(filters.grade.toLowerCase()))) &&
             (filters.status === '' || enq.status === filters.status)

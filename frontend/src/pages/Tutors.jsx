@@ -3,6 +3,7 @@ import { FiPlus, FiFilter, FiMoreVertical, FiStar, FiEdit2, FiTrash2 } from 'rea
 import './Tutors.css';
 import TutorProfileModal from '../components/TutorProfileModal';
 import NewTutorModal from '../components/NewTutorModal';
+import { useSearch } from '../context/SearchContext';
 
 const MOCK_TUTORS = [
     { id: 'TUT001', name: 'Dr. Emily Chen', subjects: 'Physics, Maths', experience: '5 Years', status: 'Active', rating: 4.8 },
@@ -18,6 +19,7 @@ const Tutors = () => {
     const [editingTutor, setEditingTutor] = useState(null);
     const [showFilters, setShowFilters] = useState(false);
     const [filters, setFilters] = useState({ name: '', subjects: '', status: '' });
+    const { searchQuery } = useSearch();
 
     const handleAddTutor = (formData) => {
         if (editingTutor) {
@@ -52,11 +54,18 @@ const Tutors = () => {
     };
 
     const filteredTutors = tutors.filter(tutor => {
-        return (
+        const q = searchQuery.toLowerCase();
+        const matchesGlobalSearch = q === '' ||
+            tutor.name?.toLowerCase().includes(q) ||
+            tutor.subjects?.toLowerCase().includes(q) ||
+            tutor.experience?.toLowerCase().includes(q) ||
+            tutor.status?.toLowerCase().includes(q) ||
+            tutor.id?.toLowerCase().includes(q);
+
+        return matchesGlobalSearch &&
             (filters.name === '' || tutor.name.toLowerCase().includes(filters.name.toLowerCase())) &&
             (filters.subjects === '' || tutor.subjects.toLowerCase().includes(filters.subjects.toLowerCase())) &&
-            (filters.status === '' || tutor.status === filters.status)
-        );
+            (filters.status === '' || tutor.status === filters.status);
     });
 
     return (

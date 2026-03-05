@@ -4,6 +4,7 @@ import {
     FiCheckCircle, FiClock, FiMessageCircle, FiFileText, FiBookOpen, FiX, FiPlus
 } from 'react-icons/fi';
 import './Sessions.css';
+import { useSearch } from '../context/SearchContext';
 
 const MOCK_SESSIONS = [
     {
@@ -95,6 +96,7 @@ const Sessions = () => {
         time: '',
         topic: ''
     });
+    const { searchQuery } = useSearch();
 
     // Date Navigation
     const handlePrevDay = () => {
@@ -196,6 +198,21 @@ const Sessions = () => {
         if (filters.subject !== 'All' && !session.subject.includes(filters.subject)) return false;
         if (filters.mode !== 'All' && session.mode !== filters.mode) return false;
         if (filters.status !== 'All' && session.status !== filters.status) return false;
+
+        // Global search bar
+        if (searchQuery) {
+            const q = searchQuery.toLowerCase();
+            const match =
+                session.student?.toLowerCase().includes(q) ||
+                session.tutor?.toLowerCase().includes(q) ||
+                session.subject?.toLowerCase().includes(q) ||
+                session.topic?.toLowerCase().includes(q) ||
+                session.location?.toLowerCase().includes(q) ||
+                session.type?.toLowerCase().includes(q) ||
+                session.id?.toLowerCase().includes(q);
+            if (!match) return false;
+        }
+
         return true;
     });
 

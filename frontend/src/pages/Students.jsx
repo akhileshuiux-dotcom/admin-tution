@@ -4,6 +4,7 @@ import './Enquiries.css';
 import StudentModal from '../components/StudentModal';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 import api from '../api';
+import { useSearch } from '../context/SearchContext';
 
 const MOCK_STUDENTS = [
     { id: 'STU001', name: 'Alex Johnson', grade: 'Grade 10', subject: 'Maths, Science', enrolledDate: '2026-03-01', status: 'Active', tutor: 'Sarah Jenkins' },
@@ -26,6 +27,7 @@ const Students = () => {
     const [studentToDelete, setStudentToDelete] = useState(null);
     const [showFilters, setShowFilters] = useState(false);
     const [filters, setFilters] = useState({ name: '', grade: '', status: '' });
+    const { searchQuery } = useSearch();
 
     useEffect(() => {
         const fetchStudents = async () => {
@@ -62,11 +64,18 @@ const Students = () => {
     };
 
     const filteredStudents = students.filter(student => {
-        return (
+        const q = searchQuery.toLowerCase();
+        const matchesGlobalSearch = q === '' ||
+            student.name?.toLowerCase().includes(q) ||
+            student.grade?.toLowerCase().includes(q) ||
+            student.subject?.toLowerCase().includes(q) ||
+            student.tutor?.toLowerCase().includes(q) ||
+            student.id?.toLowerCase().includes(q);
+
+        return matchesGlobalSearch &&
             (filters.name === '' || student.name.toLowerCase().includes(filters.name.toLowerCase())) &&
             (filters.grade === '' || (student.grade && student.grade.toLowerCase().includes(filters.grade.toLowerCase()))) &&
-            (filters.status === '' || student.status === filters.status)
-        );
+            (filters.status === '' || student.status === filters.status);
     });
 
     const handleSaveStudent = async (formData, editId) => {

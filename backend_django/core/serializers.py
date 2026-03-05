@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Student, Tutor, Plan, SubPlan, Session, Payment
+from .models import Student, Tutor, Plan, SubPlan, Session, Payment, Income, Expense, TutorPayroll
 
 class StudentSerializer(serializers.ModelSerializer):
     class Meta:
@@ -91,3 +91,23 @@ class PaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payment
         fields = '__all__'
+
+class IncomeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Income
+        fields = '__all__'
+
+class ExpenseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Expense
+        fields = '__all__'
+
+class TutorPayrollSerializer(serializers.ModelSerializer):
+    calculated_pay = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = TutorPayroll
+        fields = '__all__'
+
+    def get_calculated_pay(self, obj):
+        return obj.calculated_pay

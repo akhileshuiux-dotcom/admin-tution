@@ -178,3 +178,100 @@ class Payment(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+class Income(models.Model):
+    PAYMENT_MODE_CHOICES = (
+        ('Cash', 'Cash'),
+        ('Bank Transfer', 'Bank Transfer'),
+        ('Online', 'Online'),
+    )
+    VERIFICATION_STATUS_CHOICES = (
+        ('Pending', 'Pending'),
+        ('Verified', 'Verified'),
+        ('Rejected', 'Rejected'),
+    )
+    PLAN_TYPE_CHOICES = (
+        ('Cycle 1', 'Cycle 1'),
+        ('Cycle 2', 'Cycle 2'),
+        ('Cycle 3', 'Cycle 3'),
+        ('Admission Fee', 'Admission Fee'),
+        ('One-Time', 'One-Time'),
+    )
+
+    student = models.ForeignKey(Student, on_delete=models.SET_NULL, null=True, blank=True, related_name='income_records')
+    student_name = models.CharField(max_length=100, blank=True)  # Denormalized for cash deals
+    plan_type = models.CharField(max_length=50, choices=PLAN_TYPE_CHOICES, default='Cycle 1')
+    amount_received = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_mode = models.CharField(max_length=30, choices=PAYMENT_MODE_CHOICES, default='Bank Transfer')
+    service_provided = models.CharField(max_length=200, blank=True, null=True)
+    verification_status = models.CharField(max_length=20, choices=VERIFICATION_STATUS_CHOICES, default='Pending')
+    verified_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='verified_incomes')
+    verified_at = models.DateTimeField(null=True, blank=True)
+    remarks = models.TextField(blank=True, null=True)
+    receipt_id = models.CharField(max_length=50, blank=True, null=True)
+    # Audit trail as JSON: [{user_id, action, old_status, new_status, timestamp}]
+    audit_log = models.JSONField(default=list, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.student_name} - {self.amount_received} ({self.verification_status})"
+
+
+class Expense(models.Model):
+    CATEGORY_CHOICES = (
+        ('Tutor Salary', 'Tutor Salary'),
+        ('Rent', 'Rent'),
+        ('Utilities', 'Utilities'),
+        ('Marketing', 'Marketing'),
+        ('Software', 'Software'),
+        ('Office Supplies', 'Office Supplies'),
+        ('Other', 'Other'),
+    )
+
+    category = models.CharField(max_length=50, choices=CATEGORY_CHOICES)
+    payee_name = models.CharField(max_length=100)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_date = models.DateField()
+    receipt_attachment_url = models.URLField(blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+    # Reference to payroll entry if this was auto-created by mark_paid
+    payroll_ref = models.ForeignKey('TutorPayroll', on_delete=models.SET_NULL, null=True, blank=True, related_name='expense_entry')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    # Audit trail
+    audit_log = models.JSONField(default=list, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.category} - {self.payee_name}: {self.amount}"
+
+
+class TutorPayroll(models.Model):
+    STATUS_CHOICES = (
+        ('Pending', 'Pending'),
+        ('Paid', 'Paid'),
+    )
+
+    tutor = models.ForeignKey(Tutor, on_delete=models.CASCADE, related_name='payroll_records')
+    tutor_name = models.CharField(max_length=100, blank=True)  # Denormalized
+    month = models.CharField(max_length=20)  # e.g. "March 2026"
+    base_salary = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    hourly_rate = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    hours_logged = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+    payment_status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
+    paid_at = models.DateTimeField(null=True, blank=True)
+    paid_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def calculated_pay(self):
+        """Formula: base_salary + (hourly_rate * hours_logged)"""
+        return float(self.base_salary) + (float(self.hourly_rate) * float(self.hours_logged))
+
+    def __str__(self):
+        return f"{self.tutor_name} - {self.month}: {self.calculated_pay}"

@@ -8,6 +8,7 @@ import tutorRoutes from './routes/tutorRoutes.js';
 import planRoutes from './routes/planRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import studentRoutes from './routes/studentRoutes.js';
+import financeRoutes from './routes/financeRoutes.js';
 
 dotenv.config();
 
@@ -23,6 +24,7 @@ app.use('/api/tutors', tutorRoutes);
 app.use('/api/plans', planRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/students', studentRoutes);
+app.use('/api/finance', financeRoutes);
 
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', message: 'Guardian Tutoring API is running' });
