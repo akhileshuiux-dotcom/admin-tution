@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { FiUserPlus, FiFilter, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import './Enquiries.css';
+import StudentModal from '../components/StudentModal';
+import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 import api from '../api';
 
 const MOCK_STUDENTS = [
@@ -18,6 +20,12 @@ const MOCK_STUDENTS = [
 
 const Students = () => {
     const [students, setStudents] = useState(MOCK_STUDENTS);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingStudent, setEditingStudent] = useState(null);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [studentToDelete, setStudentToDelete] = useState(null);
+    const [showFilters, setShowFilters] = useState(false);
+    const [filters, setFilters] = useState({ name: '', grade: '', status: '' });
 
     useEffect(() => {
         const fetchStudents = async () => {
@@ -53,6 +61,81 @@ const Students = () => {
         }
     };
 
+    const filteredStudents = students.filter(student => {
+        return (
+            (filters.name === '' || student.name.toLowerCase().includes(filters.name.toLowerCase())) &&
+            (filters.grade === '' || (student.grade && student.grade.toLowerCase().includes(filters.grade.toLowerCase()))) &&
+            (filters.status === '' || student.status === filters.status)
+        );
+    });
+
+    const handleSaveStudent = async (formData, editId) => {
+        const payload = {
+            fullName: formData.name,
+            grade: formData.grade,
+            syllabus: formData.subject,
+            tutor: formData.tutor,
+            status: formData.status
+        };
+
+        try {
+            if (editId) {
+                const isMock = editId.startsWith('STU') && !editId.includes('offline'); // simple mock check
+                if (!isMock || typeof editId !== 'string') {
+                    await api.put(`/students/${editId}`, payload);
+                }
+
+                setStudents(prev => prev.map(stu => {
+                    if (stu.id === editId || stu.fullData?._id === editId) {
+                        return {
+                            ...stu,
+                            name: formData.name,
+                            grade: formData.grade,
+                            subject: formData.subject,
+                            tutor: formData.tutor,
+                            status: formData.status,
+                            fullData: { ...(stu.fullData || {}), ...payload }
+                        };
+                    }
+                    return stu;
+                }));
+            } else {
+                const res = await api.post('/students', payload);
+                const newTableEntry = {
+                    id: 'STU' + res.data._id.substring(res.data._id.length - 4).toUpperCase(),
+                    name: res.data.fullName,
+                    grade: res.data.grade,
+                    subject: res.data.syllabus || 'N/A',
+                    enrolledDate: res.data.createdAt,
+                    status: res.data.status,
+                    tutor: res.data.tutor || 'Unassigned',
+                    fullData: res.data
+                };
+                setStudents(prev => [newTableEntry, ...prev]);
+            }
+        } catch (error) {
+            console.error("Backend error updating student", error);
+            alert("Error saving student to backend.");
+        }
+    };
+
+    const confirmDelete = async () => {
+        if (!studentToDelete) return;
+
+        try {
+            if (studentToDelete.fullData?._id) {
+                await api.delete(`/students/${studentToDelete.fullData._id}`);
+            }
+            setStudents(prev => prev.filter(s => s.id !== studentToDelete.id));
+        } catch (err) {
+            console.error("Backend error, removing locally", err);
+            setStudents(prev => prev.filter(s => s.id !== studentToDelete.id));
+        } finally {
+            setIsDeleteModalOpen(false);
+            setStudentToDelete(null);
+        }
+    };
+
     return (
         <div className="enquiries-page animate-fade-in">
             <div className="page-header">
@@ -61,11 +144,31 @@ const Students = () => {
                     <p className="text-muted">Manage enrolled students, track progress, and view assigned tutors.</p>
                 </div>
                 <div className="page-actions flex gap-4">
-                    <button className="btn btn-secondary">
+                    <button className={`btn ${showFilters ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setShowFilters(!showFilters)}>
                         <FiFilter /> Filter
+                    </button>
+                    <button className="btn btn-primary" onClick={() => {
+                        setEditingStudent(null);
+                        setIsModalOpen(true);
+                    }}>
+                        <FiUserPlus /> New Student
                     </button>
                 </div>
             </div>
+
+            {showFilters && (
+                <div className="glass-panel animate-fade-in" style={{ marginBottom: '1.5rem', padding: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', borderRadius: 'var(--radius-lg)' }}>
+                    <input type="text" className="form-input" placeholder="Filter by Name" value={filters.name} onChange={e => setFilters({ ...filters, name: e.target.value })} style={{ flex: 1, minWidth: '200px' }} />
+                    <input type="text" className="form-input" placeholder="Filter by Grade" value={filters.grade} onChange={e => setFilters({ ...filters, grade: e.target.value })} style={{ flex: 1, minWidth: '150px' }} />
+                    <select className="form-input" value={filters.status} onChange={e => setFilters({ ...filters, status: e.target.value })} style={{ flex: 1, minWidth: '150px' }}>
+                        <option value="">All Statuses</option>
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                        <option value="Graduated">Graduated</option>
+                    </select>
+                    <button className="btn btn-secondary" onClick={() => setFilters({ name: '', grade: '', status: '' })}>Clear</button>
+                </div>
+            )}
 
             <div className="glass-panel table-container">
                 <table className="data-table">
@@ -82,7 +185,7 @@ const Students = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {students.map((student) => (
+                        {filteredStudents.map((student) => (
                             <tr key={student.id}>
                                 <td className="font-medium text-muted">{student.id}</td>
                                 <td className="font-semibold">{student.name}</td>
@@ -102,6 +205,10 @@ const Students = () => {
                                             style={{ color: '#8b8e98' }}
                                             onMouseEnter={(e) => e.currentTarget.style.color = '#b085f5'}
                                             onMouseLeave={(e) => e.currentTarget.style.color = '#8b8e98'}
+                                            onClick={() => {
+                                                setEditingStudent(student);
+                                                setIsModalOpen(true);
+                                            }}
                                             title="Edit"
                                         >
                                             <FiEdit2 size={18} />
@@ -111,6 +218,10 @@ const Students = () => {
                                             style={{ color: '#8b8e98' }}
                                             onMouseEnter={(e) => e.currentTarget.style.color = '#f87171'}
                                             onMouseLeave={(e) => e.currentTarget.style.color = '#8b8e98'}
+                                            onClick={() => {
+                                                setStudentToDelete(student);
+                                                setIsDeleteModalOpen(true);
+                                            }}
                                             title="Delete"
                                         >
                                             <FiTrash2 size={18} />
@@ -122,6 +233,23 @@ const Students = () => {
                     </tbody>
                 </table>
             </div>
+
+            <StudentModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSubmit={handleSaveStudent}
+                initialData={editingStudent}
+            />
+
+            <ConfirmDeleteModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => {
+                    setIsDeleteModalOpen(false);
+                    setStudentToDelete(null);
+                }}
+                onConfirm={confirmDelete}
+                itemName={studentToDelete?.name}
+            />
         </div>
     );
 };

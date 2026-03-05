@@ -16,6 +16,8 @@ const Tutors = () => {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [activeDropdown, setActiveDropdown] = useState(null);
     const [editingTutor, setEditingTutor] = useState(null);
+    const [showFilters, setShowFilters] = useState(false);
+    const [filters, setFilters] = useState({ name: '', subjects: '', status: '' });
 
     const handleAddTutor = (formData) => {
         if (editingTutor) {
@@ -49,6 +51,14 @@ const Tutors = () => {
         setActiveDropdown(activeDropdown === id ? null : id);
     };
 
+    const filteredTutors = tutors.filter(tutor => {
+        return (
+            (filters.name === '' || tutor.name.toLowerCase().includes(filters.name.toLowerCase())) &&
+            (filters.subjects === '' || tutor.subjects.toLowerCase().includes(filters.subjects.toLowerCase())) &&
+            (filters.status === '' || tutor.status === filters.status)
+        );
+    });
+
     return (
         <div className="tutors-page animate-fade-in" onClick={() => setActiveDropdown(null)}>
             <div className="page-header">
@@ -57,7 +67,7 @@ const Tutors = () => {
                     <p className="text-muted">Manage teaching staff, subjects, and availability.</p>
                 </div>
                 <div className="page-actions flex gap-4">
-                    <button className="btn btn-secondary">
+                    <button className={`btn ${showFilters ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setShowFilters(!showFilters)}>
                         <FiFilter /> Filter
                     </button>
                     <button className="btn btn-primary" onClick={() => setIsAddModalOpen(true)}>
@@ -66,8 +76,22 @@ const Tutors = () => {
                 </div>
             </div>
 
+            {showFilters && (
+                <div className="glass-panel animate-fade-in" style={{ marginBottom: '1.5rem', padding: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', borderRadius: 'var(--radius-lg)' }}>
+                    <input type="text" className="form-input" placeholder="Filter by Name" value={filters.name} onChange={e => setFilters({ ...filters, name: e.target.value })} style={{ flex: 1, minWidth: '200px' }} />
+                    <input type="text" className="form-input" placeholder="Filter by Subject" value={filters.subjects} onChange={e => setFilters({ ...filters, subjects: e.target.value })} style={{ flex: 1, minWidth: '150px' }} />
+                    <select className="form-input" value={filters.status} onChange={e => setFilters({ ...filters, status: e.target.value })} style={{ flex: 1, minWidth: '150px' }}>
+                        <option value="">All Statuses</option>
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                        <option value="Scheduled Leave">Scheduled Leave</option>
+                    </select>
+                    <button className="btn btn-secondary" onClick={() => setFilters({ name: '', subjects: '', status: '' })}>Clear</button>
+                </div>
+            )}
+
             <div className="tutors-grid">
-                {tutors.map((tutor) => (
+                {filteredTutors.map((tutor) => (
                     <div key={tutor.id} className="tutor-card glass-panel">
                         <div className="tutor-card-header">
                             <div className="tutor-avatar">{tutor.name.charAt(0)}</div>

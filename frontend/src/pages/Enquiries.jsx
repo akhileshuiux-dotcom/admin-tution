@@ -18,6 +18,8 @@ const Enquiries = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingEnquiry, setEditingEnquiry] = useState(null);
     const [enrollmentModalData, setEnrollmentModalData] = useState(null);
+    const [showFilters, setShowFilters] = useState(false);
+    const [filters, setFilters] = useState({ studentName: '', grade: '', status: '' });
 
     useEffect(() => {
         const fetchEnquiries = async () => {
@@ -134,30 +136,28 @@ const Enquiries = () => {
             return; // Exit early, do not update status in API yet
         }
 
-        let failureReason = '';
-        if (newStatus === 'Failed') {
-            failureReason = window.prompt("Please enter the reason for failure (e.g. Price too high, Timings mismatched):");
-            if (failureReason === null) return; // User cancelled
-        }
-
         try {
             const payload = { status: newStatus };
-            if (newStatus === 'Failed') payload.failureReason = failureReason;
+            if (newStatus === 'Failed') {
+                payload.failureReason = 'No reason provided';
+            }
 
             if (enquiry.fullData?._id && !enquiry.id.startsWith('ENQ')) {
                 await api.put(`/enquiries/${enquiry.fullData._id}`, payload);
             }
 
             setEnquiries(prev => prev.map(e =>
-                e.id === enquiry.id ? { ...e, status: newStatus, fullData: { ...e.fullData, ...payload } } : e
+                e.id === enquiry.id ? { ...e, status: newStatus, fullData: { ...(e.fullData || {}), ...payload } } : e
             ));
 
         } catch (error) {
             console.error("Error updating status via API, falling back to local state", error);
             const payload = { status: newStatus };
-            if (newStatus === 'Failed') payload.failureReason = failureReason;
+            if (newStatus === 'Failed') {
+                payload.failureReason = 'No reason provided';
+            }
             setEnquiries(prev => prev.map(e =>
-                e.id === enquiry.id ? { ...e, status: newStatus, fullData: { ...e.fullData, ...payload } } : e
+                e.id === enquiry.id ? { ...e, status: newStatus, fullData: { ...(e.fullData || {}), ...payload } } : e
             ));
         }
     };
@@ -242,6 +242,14 @@ const Enquiries = () => {
         }
     };
 
+    const filteredEnquiries = enquiries.filter(enq => {
+        return (
+            (filters.studentName === '' || enq.studentName.toLowerCase().includes(filters.studentName.toLowerCase())) &&
+            (filters.grade === '' || (enq.grade && enq.grade.toLowerCase().includes(filters.grade.toLowerCase()))) &&
+            (filters.status === '' || enq.status === filters.status)
+        );
+    });
+
     return (
         <div className="enquiries-page animate-fade-in">
             <div className="page-header">
@@ -250,7 +258,7 @@ const Enquiries = () => {
                     <p className="text-muted">Manage potential student enrollments and demo requests.</p>
                 </div>
                 <div className="page-actions flex gap-4">
-                    <button className="btn btn-secondary">
+                    <button className={`btn ${showFilters ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setShowFilters(!showFilters)}>
                         <FiFilter /> Filter
                     </button>
                     <button className="btn btn-primary" onClick={() => {
@@ -261,6 +269,21 @@ const Enquiries = () => {
                     </button>
                 </div>
             </div>
+
+            {showFilters && (
+                <div className="glass-panel animate-fade-in" style={{ marginBottom: '1.5rem', padding: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', borderRadius: 'var(--radius-lg)' }}>
+                    <input type="text" className="form-input" placeholder="Filter by Name" value={filters.studentName} onChange={e => setFilters({ ...filters, studentName: e.target.value })} style={{ flex: 1, minWidth: '200px' }} />
+                    <input type="text" className="form-input" placeholder="Filter by Grade" value={filters.grade} onChange={e => setFilters({ ...filters, grade: e.target.value })} style={{ flex: 1, minWidth: '150px' }} />
+                    <select className="form-input" value={filters.status} onChange={e => setFilters({ ...filters, status: e.target.value })} style={{ flex: 1, minWidth: '150px' }}>
+                        <option value="">All Statuses</option>
+                        <option value="New">New</option>
+                        <option value="Processing">Processing</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Failed">Failed</option>
+                    </select>
+                    <button className="btn btn-secondary" onClick={() => setFilters({ studentName: '', grade: '', status: '' })}>Clear</button>
+                </div>
+            )}
 
             <div className="glass-panel table-container">
                 <table className="data-table">
@@ -276,7 +299,7 @@ const Enquiries = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {enquiries.map((enq) => (
+                        {filteredEnquiries.map((enq) => (
                             <tr key={enq.id}>
                                 <td className="font-medium text-muted">{enq.id}</td>
                                 <td className="font-semibold">{enq.studentName}</td>
