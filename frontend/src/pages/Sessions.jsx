@@ -138,6 +138,36 @@ const Sessions = () => {
         setNewSessionForm({ ...newSessionForm, [e.target.name]: e.target.value });
     };
 
+    const handleSaveSession = () => {
+        if (!newSessionForm.studentName || !newSessionForm.date || !newSessionForm.tutor) {
+            alert('Please fill in exactly the required fields (Student, Tutor, Date, Time, Topic)');
+            return;
+        }
+
+        const newSession = {
+            id: `SESS${Math.floor(Math.random() * 10000)}`,
+            date: newSessionForm.date,
+            startTime: newSessionForm.time || '00:00',
+            endTime: '??:??', // Mock end time
+            student: newSessionForm.studentName,
+            subject: newSessionForm.topic.split(' - ')[0] || newSessionForm.topic,
+            topic: newSessionForm.topic.includes(' - ') ? newSessionForm.topic.split(' - ')[1] : newSessionForm.topic,
+            type: 'One-on-One',
+            mode: 'Online',
+            location: 'TBD',
+            tutor: newSessionForm.tutor,
+            status: 'Scheduled'
+        };
+
+        setSessions([...sessions, newSession]);
+
+        // Reset form
+        setNewSessionForm({
+            studentId: '', studentName: '', grade: '', tutor: '', date: '', time: '', topic: ''
+        });
+        setActiveAction(null);
+    };
+
     // Filter Logic
     const handleFilterChange = (e) => {
         setFilters({ ...filters, [e.target.name]: e.target.value });
@@ -446,7 +476,7 @@ const Sessions = () => {
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
                                         <button className="btn btn-secondary" style={{ backgroundColor: 'white', color: '#334155', border: '1px solid #e2e8f0' }} onClick={() => setActiveAction(null)}>Cancel</button>
-                                        <button className="btn btn-primary" style={{ backgroundColor: '#3b82f6', color: 'white', border: 'none' }} onClick={() => { alert('Session successfully scheduled!'); setActiveAction(null); }}>Save Session</button>
+                                        <button className="btn btn-primary" style={{ backgroundColor: '#3b82f6', color: 'white', border: 'none' }} onClick={handleSaveSession}>Save Session</button>
                                     </div>
                                 </div>
                             )}
