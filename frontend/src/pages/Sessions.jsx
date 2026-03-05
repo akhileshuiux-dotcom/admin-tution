@@ -66,6 +66,7 @@ const MOCK_SESSIONS = [
 
 const Sessions = () => {
     // State Management
+    const [sessions, setSessions] = useState(MOCK_SESSIONS);
     const [currentDate, setCurrentDate] = useState(new Date());
     const [viewMode, setViewMode] = useState('list'); // 'list', 'day', 'week'
     const [filters, setFilters] = useState({
@@ -105,7 +106,14 @@ const Sessions = () => {
         setFilters({ ...filters, [e.target.name]: e.target.value });
     };
 
-    const filteredSessions = MOCK_SESSIONS.filter(session => {
+    const handleMarkAttendance = (sessionId) => {
+        setSessions(prev => prev.map(s =>
+            s.id === sessionId ? { ...s, status: 'Completed' } : s
+        ));
+        // Note: In a real app, this would be an API call
+    };
+
+    const filteredSessions = sessions.filter(session => {
         const isoCurrentDate = formatISODate(currentDate);
         // Only show matching date for Day/List view initially
         if (session.date !== isoCurrentDate) return false;
@@ -234,17 +242,21 @@ const Sessions = () => {
                                 {/* Actions */}
                                 <div className="session-actions flex gap-3 items-center shrink-0">
                                     <div className="secondary-actions flex gap-2 mr-2 border-r pr-4 border-white-10">
-                                        <button className="icon-btn-small tooltip-wrap" title="Message Student"><FiMessageCircle size={16} /></button>
-                                        <button className="icon-btn-small tooltip-wrap" title="Lesson Materials"><FiFileText size={16} /></button>
-                                        <button className="icon-btn-small tooltip-wrap" title="Private Notes"><FiBookOpen size={16} /></button>
+                                        <button className="icon-btn-small tooltip-wrap" title="Message Student" onClick={() => alert(`Messaging ${sess.student}...`)}><FiMessageCircle size={16} /></button>
+                                        <button className="icon-btn-small tooltip-wrap" title="Lesson Materials" onClick={() => alert(`Opening materials for ${sess.topic}...`)}><FiFileText size={16} /></button>
+                                        <button className="icon-btn-small tooltip-wrap" title="Private Notes" onClick={() => alert(`Opening private notes for ${sess.student}...`)}><FiBookOpen size={16} /></button>
                                     </div>
 
                                     {sess.status === 'Scheduled' || sess.status === 'Live' ? (
-                                        <button className="btn btn-primary bg-success" style={{ backgroundColor: 'var(--success-color)', borderColor: 'var(--success-color)' }}>
+                                        <button
+                                            className="btn btn-primary bg-success"
+                                            style={{ backgroundColor: 'var(--success-color)', borderColor: 'var(--success-color)' }}
+                                            onClick={() => handleMarkAttendance(sess.id)}
+                                        >
                                             <FiCheckCircle className="mr-2" /> Mark Attendance
                                         </button>
                                     ) : sess.status === 'Completed' ? (
-                                        <button className="btn btn-secondary">
+                                        <button className="btn btn-secondary" onClick={() => alert(`Viewing report for ${sess.student}'s session.`)}>
                                             <FiFileText className="mr-2" /> View Report
                                         </button>
                                     ) : (
