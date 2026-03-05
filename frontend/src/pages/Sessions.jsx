@@ -142,19 +142,19 @@ const Sessions = () => {
     };
 
     const handleSaveSession = () => {
-        if (!newSessionForm.studentName || !newSessionForm.date || !newSessionForm.tutor) {
-            alert('Please fill in exactly the required fields (Student, Tutor, Date, Time, Topic)');
+        if (!newSessionForm.studentName || !newSessionForm.date || !newSessionForm.time || !newSessionForm.tutor) {
+            alert('Please fill out all the required fields: Student Name, Date, Time, and Assign Tutor.');
             return;
         }
 
         const newSession = {
             id: `SESS${Math.floor(Math.random() * 10000)}`,
             date: newSessionForm.date,
-            startTime: newSessionForm.time || '00:00',
+            startTime: newSessionForm.time,
             endTime: '??:??', // Mock end time
             student: newSessionForm.studentName,
-            subject: newSessionForm.topic.split(' - ')[0] || newSessionForm.topic,
-            topic: newSessionForm.topic.includes(' - ') ? newSessionForm.topic.split(' - ')[1] : newSessionForm.topic,
+            subject: newSessionForm.topic ? newSessionForm.topic.split(' - ')[0] : 'General',
+            topic: newSessionForm.topic && newSessionForm.topic.includes(' - ') ? newSessionForm.topic.split(' - ')[1] : newSessionForm.topic,
             type: 'One-on-One',
             mode: 'Online',
             location: 'TBD',
@@ -163,6 +163,10 @@ const Sessions = () => {
         };
 
         setSessions([...sessions, newSession]);
+
+        // Auto-navigate the calendar to the date of the newly created session
+        const [year, month, day] = newSessionForm.date.split('-');
+        setCurrentDate(new Date(year, month - 1, day));
 
         // Reset form
         setNewSessionForm({
