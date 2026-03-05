@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
     FiChevronLeft, FiChevronRight, FiCalendar, FiVideo, FiMapPin,
-    FiCheckCircle, FiClock, FiMessageCircle, FiFileText, FiBookOpen, FiX
+    FiCheckCircle, FiClock, FiMessageCircle, FiFileText, FiBookOpen, FiX, FiPlus
 } from 'react-icons/fi';
 import './Sessions.css';
 
@@ -144,10 +144,15 @@ const Sessions = () => {
                     <h1 className="h1 mb-0">Session Calendar</h1>
                     <p className="text-muted">Manage your upcoming classes and mark attendance.</p>
                 </div>
-                <div className="view-toggle glass-panel">
-                    <button className={`toggle-btn ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')}>List</button>
-                    <button className={`toggle-btn ${viewMode === 'day' ? 'active' : ''}`} onClick={() => setViewMode('day')}>Day</button>
-                    <button className={`toggle-btn ${viewMode === 'week' ? 'active' : ''}`} onClick={() => setViewMode('week')}>Week</button>
+                <div className="flex items-center gap-4">
+                    <div className="view-toggle glass-panel">
+                        <button className={`toggle-btn ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')}>List</button>
+                        <button className={`toggle-btn ${viewMode === 'day' ? 'active' : ''}`} onClick={() => setViewMode('day')}>Day</button>
+                        <button className={`toggle-btn ${viewMode === 'week' ? 'active' : ''}`} onClick={() => setViewMode('week')}>Week</button>
+                    </div>
+                    <button className="btn btn-primary" style={{ backgroundColor: '#3b82f6', color: 'white', border: 'none' }} onClick={() => setActiveAction({ type: 'add_session', session: null })}>
+                        <FiPlus className="mr-2" /> Add Session
+                    </button>
                 </div>
             </div>
 
@@ -278,10 +283,11 @@ const Sessions = () => {
                     <div className="modal-content animate-fade-in" style={{ width: '100%', maxWidth: '500px', backgroundColor: '#ffffff', color: '#1e293b', boxShadow: '0 20px 40px rgba(0,0,0,0.2)', borderRadius: '16px', padding: '24px' }}>
                         <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                             <h2 className="h2" style={{ margin: 0, color: '#0f172a', fontSize: '1.5rem', fontWeight: '600' }}>
-                                {activeAction.type === 'message' && `Message ${activeAction.session.student}`}
-                                {activeAction.type === 'materials' && `Materials for ${activeAction.session.topic}`}
-                                {activeAction.type === 'notes' && `Private Notes: ${activeAction.session.student}`}
-                                {activeAction.type === 'report' && `Session Report: ${activeAction.session.student}`}
+                                {activeAction.type === 'message' && activeAction.session && `Message ${activeAction.session.student}`}
+                                {activeAction.type === 'materials' && activeAction.session && `Materials for ${activeAction.session.topic}`}
+                                {activeAction.type === 'notes' && activeAction.session && `Private Notes: ${activeAction.session.student}`}
+                                {activeAction.type === 'report' && activeAction.session && `Session Report: ${activeAction.session.student}`}
+                                {activeAction.type === 'add_session' && `Add New Session`}
                             </h2>
                             <button className="icon-btn" onClick={() => setActiveAction(null)} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer' }}><FiX size={24} /></button>
                         </div>
@@ -305,7 +311,7 @@ const Sessions = () => {
                                     <button className="btn btn-primary" style={{ backgroundColor: '#3b82f6', color: 'white', border: 'none' }} onClick={() => { alert('Note saved!'); setActiveAction(null); }}>Save Note</button>
                                 </div>
                             )}
-                            {activeAction.type === 'report' && (
+                            {activeAction.type === 'report' && activeAction.session && (
                                 <div style={{ textAlign: 'left', color: '#334155', fontSize: '0.95rem' }}>
                                     <div style={{ marginBottom: '12px' }}><span style={{ color: '#64748b', fontWeight: 600, display: 'inline-block', width: '100px' }}>Status:</span> <span className={`badge-pill ${getStatusClass(activeAction.session.status)}`}>{activeAction.session.status}</span></div>
                                     <div style={{ marginBottom: '12px' }}><span style={{ color: '#64748b', fontWeight: 600, display: 'inline-block', width: '100px' }}>Attendance:</span> <span style={{ color: '#10b981', fontWeight: 500 }}>Present</span></div>
@@ -318,6 +324,32 @@ const Sessions = () => {
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                                         <button className="btn btn-primary" style={{ backgroundColor: '#3b82f6', color: 'white', border: 'none' }} onClick={() => setActiveAction(null)}>Done</button>
+                                    </div>
+                                </div>
+                            )}
+                            {activeAction.type === 'add_session' && (
+                                <div style={{ textAlign: 'left', color: '#334155', fontSize: '0.95rem' }}>
+                                    <div style={{ marginBottom: '12px' }}>
+                                        <label style={{ display: 'block', marginBottom: '4px', color: '#64748b', fontSize: '0.85rem' }}>Student Name</label>
+                                        <input type="text" className="form-input" style={{ width: '100%', backgroundColor: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1' }} placeholder="Enter student name" />
+                                    </div>
+                                    <div style={{ marginBottom: '12px', display: 'flex', gap: '12px' }}>
+                                        <div style={{ flex: 1 }}>
+                                            <label style={{ display: 'block', marginBottom: '4px', color: '#64748b', fontSize: '0.85rem' }}>Date</label>
+                                            <input type="date" className="form-input" style={{ width: '100%', backgroundColor: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1' }} />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <label style={{ display: 'block', marginBottom: '4px', color: '#64748b', fontSize: '0.85rem' }}>Time</label>
+                                            <input type="time" className="form-input" style={{ width: '100%', backgroundColor: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1' }} />
+                                        </div>
+                                    </div>
+                                    <div style={{ marginBottom: '24px' }}>
+                                        <label style={{ display: 'block', marginBottom: '4px', color: '#64748b', fontSize: '0.85rem' }}>Subject / Topic</label>
+                                        <input type="text" className="form-input" style={{ width: '100%', backgroundColor: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1' }} placeholder="e.g. Maths - Algebra" />
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                                        <button className="btn btn-secondary" style={{ backgroundColor: 'white', color: '#334155', border: '1px solid #e2e8f0' }} onClick={() => setActiveAction(null)}>Cancel</button>
+                                        <button className="btn btn-primary" style={{ backgroundColor: '#3b82f6', color: 'white', border: 'none' }} onClick={() => { alert('Session successfully scheduled!'); setActiveAction(null); }}>Save Session</button>
                                     </div>
                                 </div>
                             )}
