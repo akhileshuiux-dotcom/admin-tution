@@ -114,7 +114,7 @@ const Sessions = () => {
     };
 
     const formatDate = (date) => {
-        return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+        return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     };
 
     const formatISODate = (date) => {
