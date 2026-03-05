@@ -64,6 +64,13 @@ const MOCK_SESSIONS = [
     }
 ];
 
+const DEMO_STUDENTS = [
+    { id: 'STU001', name: 'Alex Johnson', grade: 'Grade 10' },
+    { id: 'STU002', name: 'Sarah Smith', grade: 'Grade 11 (Physics)' },
+    { id: 'STU003', name: 'Lucas Martinez', grade: 'Grade 12 (Chemistry)' },
+    { id: 'STU004', name: 'Emma Wilson', grade: 'Grade 9' }
+];
+
 const Sessions = () => {
     // State Management
     const [sessions, setSessions] = useState(MOCK_SESSIONS);
@@ -76,6 +83,15 @@ const Sessions = () => {
         status: 'All'
     });
     const [activeAction, setActiveAction] = useState(null); // { type, session }
+    const [newSessionForm, setNewSessionForm] = useState({
+        studentId: '',
+        studentName: '',
+        grade: '',
+        tutor: '',
+        date: '',
+        time: '',
+        topic: ''
+    });
 
     // Date Navigation
     const handlePrevDay = () => {
@@ -100,6 +116,26 @@ const Sessions = () => {
 
     const formatISODate = (date) => {
         return date.toISOString().split('T')[0];
+    };
+
+    // Form Logic
+    const handleStudentSelect = (e) => {
+        const studentId = e.target.value;
+        if (!studentId) {
+            setNewSessionForm({ ...newSessionForm, studentId: '', studentName: '', grade: '' });
+            return;
+        }
+        const student = DEMO_STUDENTS.find(s => s.id === studentId);
+        setNewSessionForm({
+            ...newSessionForm,
+            studentId: student.id,
+            studentName: student.name,
+            grade: student.grade
+        });
+    };
+
+    const handleFormChange = (e) => {
+        setNewSessionForm({ ...newSessionForm, [e.target.name]: e.target.value });
     };
 
     // Filter Logic
@@ -331,16 +367,40 @@ const Sessions = () => {
                                 <div style={{ textAlign: 'left', color: '#334155', fontSize: '0.95rem' }}>
                                     <div style={{ marginBottom: '12px' }}>
                                         <label style={{ display: 'block', marginBottom: '4px', color: '#64748b', fontSize: '0.85rem' }}>Student Name</label>
-                                        <input type="text" className="form-input" style={{ width: '100%', backgroundColor: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1' }} placeholder="Enter student name (Grade will auto-fill)" />
+                                        <select
+                                            className="form-input"
+                                            style={{ width: '100%', backgroundColor: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1' }}
+                                            onChange={handleStudentSelect}
+                                            value={newSessionForm.studentId}
+                                        >
+                                            <option value="">Select a student...</option>
+                                            {DEMO_STUDENTS.map(student => (
+                                                <option key={student.id} value={student.id}>{student.name}</option>
+                                            ))}
+                                        </select>
                                     </div>
                                     <div style={{ marginBottom: '12px', display: 'flex', gap: '12px' }}>
                                         <div style={{ flex: 1 }}>
                                             <label style={{ display: 'block', marginBottom: '4px', color: '#64748b', fontSize: '0.85rem' }}>Grade / Class</label>
-                                            <input type="text" className="form-input" style={{ width: '100%', backgroundColor: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1' }} placeholder="e.g. Grade 10" />
+                                            <input
+                                                type="text"
+                                                name="grade"
+                                                className="form-input"
+                                                style={{ width: '100%', backgroundColor: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1' }}
+                                                placeholder="e.g. Grade 10"
+                                                value={newSessionForm.grade}
+                                                onChange={handleFormChange}
+                                            />
                                         </div>
                                         <div style={{ flex: 1 }}>
                                             <label style={{ display: 'block', marginBottom: '4px', color: '#64748b', fontSize: '0.85rem' }}>Assign Tutor</label>
-                                            <select className="form-input" style={{ width: '100%', backgroundColor: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1' }}>
+                                            <select
+                                                name="tutor"
+                                                className="form-input"
+                                                style={{ width: '100%', backgroundColor: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1' }}
+                                                value={newSessionForm.tutor}
+                                                onChange={handleFormChange}
+                                            >
                                                 <option value="">Select Tutor...</option>
                                                 <option value="Dr. Emily Chen">Dr. Emily Chen</option>
                                                 <option value="James Wilson">James Wilson</option>
@@ -351,16 +411,38 @@ const Sessions = () => {
                                     <div style={{ marginBottom: '12px', display: 'flex', gap: '12px' }}>
                                         <div style={{ flex: 1 }}>
                                             <label style={{ display: 'block', marginBottom: '4px', color: '#64748b', fontSize: '0.85rem' }}>Date</label>
-                                            <input type="date" className="form-input" style={{ width: '100%', backgroundColor: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1' }} />
+                                            <input
+                                                type="date"
+                                                name="date"
+                                                className="form-input"
+                                                style={{ width: '100%', backgroundColor: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1' }}
+                                                value={newSessionForm.date}
+                                                onChange={handleFormChange}
+                                            />
                                         </div>
                                         <div style={{ flex: 1 }}>
                                             <label style={{ display: 'block', marginBottom: '4px', color: '#64748b', fontSize: '0.85rem' }}>Time</label>
-                                            <input type="time" className="form-input" style={{ width: '100%', backgroundColor: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1' }} />
+                                            <input
+                                                type="time"
+                                                name="time"
+                                                className="form-input"
+                                                style={{ width: '100%', backgroundColor: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1' }}
+                                                value={newSessionForm.time}
+                                                onChange={handleFormChange}
+                                            />
                                         </div>
                                     </div>
                                     <div style={{ marginBottom: '24px' }}>
                                         <label style={{ display: 'block', marginBottom: '4px', color: '#64748b', fontSize: '0.85rem' }}>Subject / Topic</label>
-                                        <input type="text" className="form-input" style={{ width: '100%', backgroundColor: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1' }} placeholder="e.g. Maths - Algebra" />
+                                        <input
+                                            type="text"
+                                            name="topic"
+                                            className="form-input"
+                                            style={{ width: '100%', backgroundColor: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1' }}
+                                            placeholder="e.g. Maths - Algebra"
+                                            value={newSessionForm.topic}
+                                            onChange={handleFormChange}
+                                        />
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
                                         <button className="btn btn-secondary" style={{ backgroundColor: 'white', color: '#334155', border: '1px solid #e2e8f0' }} onClick={() => setActiveAction(null)}>Cancel</button>
