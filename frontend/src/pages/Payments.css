@@ -1,0 +1,8 @@
+.payments-page {
+    height: 100%;
+}
+
+.payment-list {
+    padding: var(--spacing-md);
+    margin-top: var(--spacing-lg);
+}
