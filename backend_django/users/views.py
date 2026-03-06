@@ -4,6 +4,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from django.contrib.auth import authenticate
+
 class CustomLoginView(APIView):
     permission_classes = [AllowAny]
 
@@ -11,28 +13,19 @@ class CustomLoginView(APIView):
         email = request.data.get('email')
         password = request.data.get('password')
 
-        # MVP Hardcoded login matching Express
-        if email == 'demo@guardiantutoring.com' and password == 'password':
-            user_data = {
-                'id': 'mock-id',
-                'name': 'Sarah Jenkins',
-                'email': 'demo@guardiantutoring.com',
-                'role': 'Admission Manager'
-            }
-            # Create a fake token structure that doesn't actually exist in the DB
-            # For a real DB user, we'd do: RefreshToken.for_user(user)
-            # Since we just need a string formatted like a JWT, we can create one manually or mock it
-            # To keep it simple, we'll return a static mock token for the mock user
-            import jwt
-            from django.conf import settings
-            token = jwt.encode(
-                {'id': user_data['id'], 'role': user_data['role']}, 
-                settings.SECRET_KEY, 
-                algorithm='HS256'
-            )
+        # Authenticate against DB
+        user = authenticate(request, email=email, password=password)
 
+        if user is not None:
+            refresh = RefreshToken.for_user(user)
+            user_data = {
+                'id': user.id,
+                'name': user.name,
+                'email': user.email,
+                'role': user.role
+            }
             return Response({
-                'token': token,
+                'token': str(refresh.access_token),
                 'user': user_data
             }, status=status.HTTP_200_OK)
 

@@ -9,7 +9,9 @@ import Tutors from './pages/Tutors';
 import PlanWizard from './pages/PlanWizard';
 import Sessions from './pages/Sessions';
 import Payments from './pages/Payments';
+import Settings from './pages/Settings';
 import { SearchProvider } from './context/SearchContext';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
@@ -20,7 +22,7 @@ function App() {
             <Route path="/login" element={<Login />} />
           </Route>
 
-          <Route element={<MainLayout />}>
+          <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/enquiries" element={<Enquiries />} />
             <Route path="/tutors" element={<Tutors />} />
@@ -28,8 +30,8 @@ function App() {
             <Route path="/plans/new" element={<PlanWizard />} />
             <Route path="/schedule" element={<Sessions />} />
             <Route path="/payments" element={<Payments />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            {/* We will add routes for Students here */}
           </Route>
         </Routes>
       </BrowserRouter>

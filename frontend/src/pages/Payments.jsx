@@ -8,35 +8,11 @@ import './Payments.css';
 import { useSearch } from '../context/SearchContext';
 import RecordCashModal from '../components/RecordCashModal';
 import AddExpenseModal from '../components/AddExpenseModal';
+import { useIncome, useExpenses, usePayroll, useFinancialStats } from '../hooks/useFinance';
 
 // ─── Mock Data ───────────────────────────────────────────────────────────────
 
-const MOCK_INCOME = [
-    { id: 'INC-001', studentName: 'Alex Johnson', planType: 'Cycle 1', amountReceived: 460, paymentMode: 'Bank Transfer', verificationStatus: 'Verified', date: '2026-03-01', receiptId: 'RCP-849201' },
-    { id: 'INC-002', studentName: 'Sarah Smith', planType: 'Cycle 2', amountReceived: 320, paymentMode: 'Online', verificationStatus: 'Verified', date: '2026-03-02', receiptId: 'RCP-849202' },
-    { id: 'INC-003', studentName: 'Michael Brown', planType: 'Admission Fee', amountReceived: 150, paymentMode: 'Cash', verificationStatus: 'Verified', date: '2026-03-03', receiptId: 'RCP-849203' },
-    { id: 'INC-004', studentName: 'Emma Wilson', planType: 'Cycle 1', amountReceived: 460, paymentMode: 'Bank Transfer', verificationStatus: 'Pending', date: '2026-03-04', receiptId: 'RCP-849204' },
-    { id: 'INC-005', studentName: 'Daniel Kim', planType: 'Cycle 1', amountReceived: 380, paymentMode: 'Online', verificationStatus: 'Verified', date: '2026-03-04', receiptId: 'RCP-849205' },
-    { id: 'INC-006', studentName: 'Liam Wilson', planType: 'Cycle 2', amountReceived: 220, paymentMode: 'Cash', verificationStatus: 'Verified', date: '2026-03-05', receiptId: 'RCP-849206' },
-];
-
-const MOCK_EXPENSES = [
-    { id: 'EXP-001', category: 'Rent', payeeName: 'Prestige Properties Ltd.', amount: 2500, paymentDate: '2026-03-01', receiptUrl: '' },
-    { id: 'EXP-002', category: 'Utilities', payeeName: 'City Power & Water', amount: 320, paymentDate: '2026-03-03', receiptUrl: '' },
-    { id: 'EXP-003', category: 'Marketing', payeeName: 'Digital Reach Agency', amount: 800, paymentDate: '2026-02-28', receiptUrl: '' },
-    { id: 'EXP-004', category: 'Software', payeeName: 'Zoom Video Communications', amount: 150, paymentDate: '2026-02-15', receiptUrl: '' },
-    { id: 'EXP-005', category: 'Office Supplies', payeeName: 'Office Depot', amount: 85, paymentDate: '2026-02-20', receiptUrl: '' },
-];
-
-const MOCK_PAYROLL = [
-    { id: 'PAY-001', tutorName: 'Dr. Emily Chen', month: 'March 2026', baseSalary: 1200, hourlyRate: 25, hoursLogged: 18, paymentStatus: 'Pending', subjects: 'Physics, Maths' },
-    { id: 'PAY-002', tutorName: 'James Wilson', month: 'March 2026', baseSalary: 1000, hourlyRate: 20, hoursLogged: 14, paymentStatus: 'Pending', subjects: 'English Literature' },
-    { id: 'PAY-003', tutorName: 'Priya Sharma', month: 'March 2026', baseSalary: 1400, hourlyRate: 30, hoursLogged: 22, paymentStatus: 'Pending', subjects: 'Chemistry, Biology' },
-    { id: 'PAY-004', tutorName: 'Dr. Emily Chen', month: 'February 2026', baseSalary: 1200, hourlyRate: 25, hoursLogged: 16, paymentStatus: 'Paid', subjects: 'Physics, Maths' },
-    { id: 'PAY-005', tutorName: 'James Wilson', month: 'February 2026', baseSalary: 1000, hourlyRate: 20, hoursLogged: 12, paymentStatus: 'Paid', subjects: 'English Literature' },
-];
-
-const MOM_DATA = [
+const MOM_DATA_FALLBACK = [
     { month: 'Nov', income: 8200, expenses: 4800 },
     { month: 'Dec', income: 9400, expenses: 5200 },
     { month: 'Jan', income: 7800, expenses: 4600 },
@@ -173,9 +149,12 @@ const DateFilterBar = ({ dateFrom, dateTo, onFromChange, onToChange, onClear }) 
 
 const Payments = () => {
     const [activeTab, setActiveTab] = useState('dashboard');
-    const [income, setIncome] = useState(MOCK_INCOME);
-    const [expenses, setExpenses] = useState(MOCK_EXPENSES);
-    const [payroll, setPayroll] = useState(MOCK_PAYROLL);
+    const { data: income, addIncome, updateIncome, loading: incomeLoading } = useIncome();
+    const { data: expenses, addExpense, updateExpense, loading: expenseLoading } = useExpenses();
+    const { data: payroll, updatePayroll, loading: payrollLoading } = usePayroll();
+    const liveStats = useFinancialStats();
+
+    const momData = liveStats.length > 0 ? liveStats : MOM_DATA_FALLBACK;
 
     // Modals
     const [isCashModalOpen, setIsCashModalOpen] = useState(false);
@@ -214,30 +193,73 @@ const Payments = () => {
     };
 
     // ── Handlers ──
-    const handleCashSubmit = (payload) => setIncome(prev => [payload, ...prev]);
-    const handleExpenseSubmit = (payload) => setExpenses(prev => [payload, ...prev]);
-
-    const handleVerifyIncome = (id) => {
-        setIncome(prev => prev.map(i => i.id === id
-            ? { ...i, verificationStatus: 'Verified', auditLog: [...(i.auditLog || []), { action: 'STATUS_CHANGE', newStatus: 'Verified', timestamp: new Date().toISOString() }] }
-            : i));
+    const handleCashSubmit = async (payload) => {
+        try {
+            await addIncome({
+                ...payload,
+                verificationStatus: 'Verified',
+                date: new Date().toISOString().split('T')[0]
+            });
+        } catch (err) {
+            console.error("Failed to add cash income:", err);
+        }
     };
 
-    const handleMarkPaid = (id) => {
+    const handleExpenseSubmit = async (payload) => {
+        try {
+            await addExpense(payload);
+        } catch (err) {
+            console.error("Failed to add expense:", err);
+        }
+    };
+
+    const handleVerifyIncome = async (id) => {
+        try {
+            await updateIncome(id, { verificationStatus: 'Verified' });
+        } catch (err) {
+            console.error("Failed to verify income:", err);
+        }
+    };
+
+    const handleMarkPaid = async (id) => {
         const entry = payroll.find(p => p.id === id);
         if (!entry) return;
         const amount = calcPay(entry);
-        setPayroll(prev => prev.map(p => p.id === id ? { ...p, paymentStatus: 'Paid', paidAt: new Date().toISOString() } : p));
-        setExpenses(prev => [{
-            id: 'EXP-' + Date.now(), category: 'Tutor Salary',
-            payeeName: entry.tutorName, amount,
-            paymentDate: new Date().toISOString().split('T')[0], receiptUrl: '',
-        }, ...prev]);
+        try {
+            await updatePayroll(id, { paymentStatus: 'Paid', paidAt: new Date().toISOString() });
+            await addExpense({
+                category: 'Tutor Salary',
+                payeeName: entry.tutorName,
+                amount,
+                paymentDate: new Date().toISOString().split('T')[0],
+                receiptUrl: '',
+            });
+        } catch (err) {
+            console.error("Failed to mark payroll as paid:", err);
+        }
     };
 
-    const handleSaveIncome = (updated) => setIncome(prev => prev.map(i => i.id === updated.id ? { ...i, ...updated, amountReceived: Number(updated.amountReceived) } : i));
-    const handleSaveExpense = (updated) => setExpenses(prev => prev.map(e => e.id === updated.id ? { ...e, ...updated, amount: Number(updated.amount) } : e));
-    const handleSavePayroll = (updated) => setPayroll(prev => prev.map(p => p.id === updated.id ? { ...p, ...updated, baseSalary: Number(updated.baseSalary), hourlyRate: Number(updated.hourlyRate), hoursLogged: Number(updated.hoursLogged) } : p));
+    const handleSaveIncome = async (updated) => {
+        try {
+            await updateIncome(updated.id, updated);
+        } catch (err) {
+            console.error("Failed to save income:", err);
+        }
+    };
+    const handleSaveExpense = async (updated) => {
+        try {
+            await updateExpense(updated.id, updated);
+        } catch (err) {
+            console.error("Failed to save expense:", err);
+        }
+    };
+    const handleSavePayroll = async (updated) => {
+        try {
+            await updatePayroll(updated.id, updated);
+        } catch (err) {
+            console.error("Failed to save payroll:", err);
+        }
+    };
 
     // ── Filtered data ──
     const filteredIncome = income.filter(i => {
@@ -320,63 +342,70 @@ const Payments = () => {
 
             {/* ── TAB: DASHBOARD ─────────────────────────────────── */}
             {activeTab === 'dashboard' && (
-                <div>
-                    <div className="fin-kpi-grid">
-                        <KPICard icon={<FiTrendingUp />} label="Total Revenue" value={`$${totalIncome.toLocaleString()}`} sub="Verified payments only" color="#10b981" trend={12} />
-                        <KPICard icon={<FiTrendingDown />} label="Total Expenses" value={`$${totalExpenses.toLocaleString()}`} sub="All logged costs" color="#ef4444" trend={-5} />
-                        <KPICard icon={<FiActivity />} label="Net Balance" value={`$${netBalance.toLocaleString()}`} sub={netBalance >= 0 ? 'Surplus' : 'Deficit'} color={netBalance >= 0 ? '#3b82f6' : '#f59e0b'} />
-                        <KPICard icon={<FiClock />} label="Pending Salaries" value={`$${pendingSalaries.toLocaleString()}`} sub={`${payroll.filter(p => p.paymentStatus === 'Pending').length} tutors unpaid`} color="#8b5cf6" />
+                (incomeLoading || expenseLoading || payrollLoading) ? (
+                    <div style={{ padding: '80px', textAlign: 'center' }}>
+                        <div className="animate-spin" style={{ width: '40px', height: '40px', border: '4px solid #3b82f6', borderTopColor: 'transparent', borderRadius: '50%', margin: '0 auto 20px' }} />
+                        <p className="text-muted">Calculating financial dashboard...</p>
                     </div>
-
-                    <div className="fin-dashboard-row">
-                        <div className="glass-panel fin-chart-panel">
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                                <div>
-                                    <h3 className="h3" style={{ margin: 0 }}>Month-over-Month</h3>
-                                    <p className="text-muted" style={{ margin: 0, fontSize: '0.8rem' }}>Income vs Expenses trend</p>
-                                </div>
-                                <div style={{ display: 'flex', gap: '16px', fontSize: '0.78rem' }}>
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#10b981', display: 'inline-block' }} /> Income</span>
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#ef4444', display: 'inline-block' }} /> Expenses</span>
-                                </div>
-                            </div>
-                            <MoMChart data={MOM_DATA} />
+                ) : (
+                    <div>
+                        <div className="fin-kpi-grid">
+                            <KPICard icon={<FiTrendingUp />} label="Total Revenue" value={`$${totalIncome.toLocaleString()}`} sub="Verified payments only" color="#10b981" trend={12} />
+                            <KPICard icon={<FiTrendingDown />} label="Total Expenses" value={`$${totalExpenses.toLocaleString()}`} sub="All logged costs" color="#ef4444" trend={-5} />
+                            <KPICard icon={<FiActivity />} label="Net Balance" value={`$${netBalance.toLocaleString()}`} sub={netBalance >= 0 ? 'Surplus' : 'Deficit'} color={netBalance >= 0 ? '#3b82f6' : '#f59e0b'} />
+                            <KPICard icon={<FiClock />} label="Pending Salaries" value={`$${pendingSalaries.toLocaleString()}`} sub={`${payroll.filter(p => p.paymentStatus === 'Pending').length} tutors unpaid`} color="#8b5cf6" />
                         </div>
-                        <div className="glass-panel fin-cash-panel">
-                            <h3 className="h3" style={{ marginBottom: '16px' }}>💵 Cash Breakdown</h3>
-                            <div className="fin-cash-item"><span className="text-muted">Cash on Hand</span><span style={{ fontWeight: 700, color: '#10b981', fontSize: '1.1rem' }}>${cashOnHand.toLocaleString()}</span></div>
-                            <div className="fin-cash-item"><span className="text-muted">Bank / Online</span><span style={{ fontWeight: 700, color: '#3b82f6', fontSize: '1.1rem' }}>${(totalIncome - cashOnHand).toLocaleString()}</span></div>
-                            <div className="fin-cash-item" style={{ borderTop: '2px solid var(--border-color)', marginTop: '4px', paddingTop: '16px' }}>
-                                <span style={{ fontWeight: 600 }}>Total Verified Income</span>
-                                <span style={{ fontWeight: 800, fontSize: '1.2rem' }}>${totalIncome.toLocaleString()}</span>
+
+                        <div className="fin-dashboard-row">
+                            <div className="glass-panel fin-chart-panel">
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                                    <div>
+                                        <h3 className="h3" style={{ margin: 0 }}>Month-over-Month</h3>
+                                        <p className="text-muted" style={{ margin: 0, fontSize: '0.8rem' }}>Income vs Expenses trend</p>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '16px', fontSize: '0.78rem' }}>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#10b981', display: 'inline-block' }} /> Income</span>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><span style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#ef4444', display: 'inline-block' }} /> Expenses</span>
+                                    </div>
+                                </div>
+                                <MoMChart data={momData} />
                             </div>
-                            <div style={{ marginTop: '20px', background: '#fef9f0', border: '1px solid #fde68a', borderRadius: '10px', padding: '12px 16px' }}>
-                                <div style={{ fontSize: '0.78rem', color: '#92400e', fontWeight: 600, marginBottom: '4px' }}>⚠ Pending Verification</div>
-                                <div style={{ fontSize: '0.85rem', color: '#b45309' }}>${income.filter(i => i.verificationStatus === 'Pending').reduce((s, i) => s + i.amountReceived, 0).toLocaleString()} awaiting review</div>
+                            <div className="glass-panel fin-cash-panel">
+                                <h3 className="h3" style={{ marginBottom: '16px' }}>💵 Cash Breakdown</h3>
+                                <div className="fin-cash-item"><span className="text-muted">Cash on Hand</span><span style={{ fontWeight: 700, color: '#10b981', fontSize: '1.1rem' }}>${cashOnHand.toLocaleString()}</span></div>
+                                <div className="fin-cash-item"><span className="text-muted">Bank / Online</span><span style={{ fontWeight: 700, color: '#3b82f6', fontSize: '1.1rem' }}>${(totalIncome - cashOnHand).toLocaleString()}</span></div>
+                                <div className="fin-cash-item" style={{ borderTop: '2px solid var(--border-color)', marginTop: '4px', paddingTop: '16px' }}>
+                                    <span style={{ fontWeight: 600 }}>Total Verified Income</span>
+                                    <span style={{ fontWeight: 800, fontSize: '1.2rem' }}>${totalIncome.toLocaleString()}</span>
+                                </div>
+                                <div style={{ marginTop: '20px', background: '#fef9f0', border: '1px solid #fde68a', borderRadius: '10px', padding: '12px 16px' }}>
+                                    <div style={{ fontSize: '0.78rem', color: '#92400e', fontWeight: 600, marginBottom: '4px' }}>⚠ Pending Verification</div>
+                                    <div style={{ fontSize: '0.85rem', color: '#b45309' }}>${income.filter(i => i.verificationStatus === 'Pending').reduce((s, i) => s + i.amountReceived, 0).toLocaleString()} awaiting review</div>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div className="glass-panel" style={{ marginTop: '20px' }}>
-                        <h3 className="h3" style={{ marginBottom: '16px' }}>Recent Transactions</h3>
-                        <table className="data-table">
-                            <thead><tr><th>Receipt ID</th><th>Student / Payer</th><th>Plan</th><th>Amount</th><th>Mode</th><th>Date</th><th>Status</th></tr></thead>
-                            <tbody>
-                                {income.slice(0, 5).map(i => (
-                                    <tr key={i.id}>
-                                        <td className="font-medium text-muted">{i.receiptId}</td>
-                                        <td className="font-semibold">{i.studentName}</td>
-                                        <td>{i.planType}</td>
-                                        <td className="font-bold" style={{ color: '#10b981' }}>${i.amountReceived.toLocaleString()}</td>
-                                        <td><span style={{ background: `${MODE_COLORS[i.paymentMode]}18`, color: MODE_COLORS[i.paymentMode], padding: '2px 10px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 600 }}>{i.paymentMode}</span></td>
-                                        <td className="text-muted">{i.date}</td>
-                                        <td><span className={`status-badge ${i.verificationStatus === 'Verified' ? 'status-badge-converted' : 'status-badge-draft'}`}>{i.verificationStatus}</span></td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                        <div className="glass-panel" style={{ marginTop: '20px' }}>
+                            <h3 className="h3" style={{ marginBottom: '16px' }}>Recent Transactions</h3>
+                            <table className="data-table">
+                                <thead><tr><th>Receipt ID</th><th>Student / Payer</th><th>Plan</th><th>Amount</th><th>Mode</th><th>Date</th><th>Status</th></tr></thead>
+                                <tbody>
+                                    {income.slice(0, 5).map(i => (
+                                        <tr key={i.id}>
+                                            <td className="font-medium text-muted">{i.receiptId}</td>
+                                            <td className="font-semibold">{i.studentName}</td>
+                                            <td>{i.planType}</td>
+                                            <td className="font-bold" style={{ color: '#10b981' }}>${i.amountReceived.toLocaleString()}</td>
+                                            <td><span style={{ background: `${MODE_COLORS[i.paymentMode] || '#94a3b8'}18`, color: MODE_COLORS[i.paymentMode] || '#94a3b8', padding: '2px 10px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 600 }}>{i.paymentMode}</span></td>
+                                            <td className="text-muted">{i.date}</td>
+                                            <td><span className={`status-badge ${i.verificationStatus === 'Verified' ? 'status-badge-converted' : 'status-badge-draft'}`}>{i.verificationStatus}</span></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                </div>
+                )
             )}
 
             {/* ── TAB: INCOME LEDGER ─────────────────────────────── */}
@@ -407,35 +436,42 @@ const Payments = () => {
                     </div>
 
                     <div className="glass-panel table-container">
-                        <table className="data-table">
-                            <thead><tr><th>Receipt ID</th><th>Student / Payer</th><th>Plan Type</th><th>Amount</th><th>Mode</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
-                            <tbody>
-                                {filteredIncome.map(i => (
-                                    <tr key={i.id}>
-                                        <td className="font-medium text-muted">{i.receiptId || i.id}</td>
-                                        <td className="font-semibold">{i.studentName}</td>
-                                        <td>{i.planType}</td>
-                                        <td className="font-bold" style={{ color: '#10b981' }}>${i.amountReceived.toLocaleString()}</td>
-                                        <td><span style={{ background: `${MODE_COLORS[i.paymentMode]}18`, color: MODE_COLORS[i.paymentMode], padding: '3px 10px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 600 }}>{i.paymentMode}</span></td>
-                                        <td className="text-muted">{i.date}</td>
-                                        <td><span className={`status-badge ${i.verificationStatus === 'Verified' ? 'status-badge-converted' : i.verificationStatus === 'Rejected' ? 'status-badge-closed-red' : 'status-badge-draft'}`}>{i.verificationStatus}</span></td>
-                                        <td>
-                                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                                <button className="fin-edit-btn" onClick={() => setEditingIncome(i)} title="Edit">
-                                                    <FiEdit2 size={13} />
-                                                </button>
-                                                {i.verificationStatus === 'Pending' && (
-                                                    <button className="btn btn-primary btn-sm" style={{ backgroundColor: '#10b981', borderColor: '#10b981', fontSize: '0.75rem', padding: '4px 10px' }} onClick={() => handleVerifyIncome(i.id)}>
-                                                        <FiCheckCircle size={11} /> Verify
+                        {incomeLoading ? (
+                            <div style={{ padding: '80px', textAlign: 'center' }}>
+                                <div className="animate-spin" style={{ width: '30px', height: '30px', border: '3px solid #3b82f6', borderTopColor: 'transparent', borderRadius: '50%', margin: '0 auto 15px' }} />
+                                <p className="text-muted">Loading income ledger...</p>
+                            </div>
+                        ) : (
+                            <table className="data-table">
+                                <thead><tr><th>Receipt ID</th><th>Student / Payer</th><th>Plan Type</th><th>Amount</th><th>Mode</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
+                                <tbody>
+                                    {filteredIncome.map(i => (
+                                        <tr key={i.id}>
+                                            <td className="font-medium text-muted">{i.receiptId || i.id}</td>
+                                            <td className="font-semibold">{i.studentName}</td>
+                                            <td>{i.planType}</td>
+                                            <td className="font-bold" style={{ color: '#10b981' }}>${i.amountReceived.toLocaleString()}</td>
+                                            <td><span style={{ background: `${MODE_COLORS[i.paymentMode] || '#94a3b8'}18`, color: MODE_COLORS[i.paymentMode] || '#94a3b8', padding: '3px 10px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 600 }}>{i.paymentMode}</span></td>
+                                            <td className="text-muted">{i.date}</td>
+                                            <td><span className={`status-badge ${i.verificationStatus === 'Verified' ? 'status-badge-converted' : i.verificationStatus === 'Rejected' ? 'status-badge-closed-red' : 'status-badge-draft'}`}>{i.verificationStatus}</span></td>
+                                            <td>
+                                                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                                    <button className="fin-edit-btn" onClick={() => setEditingIncome(i)} title="Edit">
+                                                        <FiEdit2 size={13} />
                                                     </button>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                                {filteredIncome.length === 0 && <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No transactions match your filters.</td></tr>}
-                            </tbody>
-                        </table>
+                                                    {i.verificationStatus === 'Pending' && (
+                                                        <button className="btn btn-primary btn-sm" style={{ backgroundColor: '#10b981', borderColor: '#10b981', fontSize: '0.75rem', padding: '4px 10px' }} onClick={() => handleVerifyIncome(i.id)}>
+                                                            <FiCheckCircle size={11} /> Verify
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {filteredIncome.length === 0 && <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No transactions match your filters.</td></tr>}
+                                </tbody>
+                            </table>
+                        )}
                     </div>
                 </div>
             )}
@@ -474,33 +510,40 @@ const Payments = () => {
                     </div>
 
                     <div className="glass-panel table-container">
-                        <table className="data-table">
-                            <thead><tr><th>ID</th><th>Category</th><th>Payee</th><th>Amount</th><th>Date</th><th>Receipt</th><th>Actions</th></tr></thead>
-                            <tbody>
-                                {filteredExpenses.map(e => (
-                                    <tr key={e.id}>
-                                        <td className="font-medium text-muted">{e.id}</td>
-                                        <td><span style={{ background: `${CATEGORY_COLORS[e.category]}18`, color: CATEGORY_COLORS[e.category], padding: '3px 10px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 600 }}>{e.category}</span></td>
-                                        <td className="font-semibold">{e.payeeName}</td>
-                                        <td className="font-bold" style={{ color: '#ef4444' }}>${e.amount.toLocaleString()}</td>
-                                        <td className="text-muted">{e.paymentDate}</td>
-                                        <td>{e.receiptUrl ? <a href={e.receiptUrl} target="_blank" rel="noreferrer" style={{ color: '#3b82f6', display: 'flex', alignItems: 'center', gap: '4px' }}><FiLink size={14} /> View</a> : <span className="text-muted">—</span>}</td>
-                                        <td>
-                                            <button className="fin-edit-btn" onClick={() => setEditingExpense(e)} title="Edit">
-                                                <FiEdit2 size={13} />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                                {filteredExpenses.length === 0 && <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No expenses match your filters.</td></tr>}
-                            </tbody>
-                        </table>
+                        {expenseLoading ? (
+                            <div style={{ padding: '80px', textAlign: 'center' }}>
+                                <div className="animate-spin" style={{ width: '30px', height: '30px', border: '3px solid #ef4444', borderTopColor: 'transparent', borderRadius: '50%', margin: '0 auto 15px' }} />
+                                <p className="text-muted">Loading expense records...</p>
+                            </div>
+                        ) : (
+                            <table className="data-table">
+                                <thead><tr><th>ID</th><th>Category</th><th>Payee</th><th>Amount</th><th>Date</th><th>Receipt</th><th>Actions</th></tr></thead>
+                                <tbody>
+                                    {filteredExpenses.map(e => (
+                                        <tr key={e.id}>
+                                            <td className="font-medium text-muted">{e.id}</td>
+                                            <td><span style={{ background: `${CATEGORY_COLORS[e.category] || '#94a3b8'}18`, color: CATEGORY_COLORS[e.category] || '#94a3b8', padding: '3px 10px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 600 }}>{e.category}</span></td>
+                                            <td className="font-semibold">{e.payeeName}</td>
+                                            <td className="font-bold" style={{ color: '#ef4444' }}>${e.amount.toLocaleString()}</td>
+                                            <td className="text-muted">{e.paymentDate}</td>
+                                            <td>{e.receiptUrl ? <a href={e.receiptUrl} target="_blank" rel="noreferrer" style={{ color: '#3b82f6', display: 'flex', alignItems: 'center', gap: '4px' }}><FiLink size={14} /> View</a> : <span className="text-muted">—</span>}</td>
+                                            <td>
+                                                <button className="fin-edit-btn" onClick={() => setEditingExpense(e)} title="Edit">
+                                                    <FiEdit2 size={13} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {filteredExpenses.length === 0 && <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No expenses match your filters.</td></tr>}
+                                </tbody>
+                            </table>
+                        )}
                     </div>
 
                     <div className="glass-panel" style={{ marginTop: '20px' }}>
                         <h3 className="h3" style={{ marginBottom: '8px' }}>Month-over-Month Expense Comparison</h3>
                         <p className="text-muted" style={{ marginBottom: '16px', fontSize: '0.82rem' }}>Blue = Income &nbsp;|&nbsp; Red = Expenses</p>
-                        <MoMChart data={MOM_DATA} />
+                        <MoMChart data={momData} />
                     </div>
                 </div>
             )}
@@ -535,61 +578,68 @@ const Payments = () => {
                     </div>
 
                     <div className="glass-panel table-container">
-                        <table className="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Tutor</th><th>Month</th><th>Base Salary</th><th>Hourly Rate</th><th>Hours Logged</th>
-                                    <th>Calculated Pay <span style={{ color: '#94a3b8', fontWeight: 400, fontSize: '0.75rem' }}>(base + rate×hrs)</span></th>
-                                    <th>Status</th><th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredPayroll.map(p => {
-                                    const pay = calcPay(p);
-                                    return (
-                                        <tr key={p.id}>
-                                            <td>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.85rem', flexShrink: 0 }}>
-                                                        {p.tutorName.charAt(0)}
+                        {payrollLoading ? (
+                            <div style={{ padding: '80px', textAlign: 'center' }}>
+                                <div className="animate-spin" style={{ width: '30px', height: '30px', border: '3px solid #8b5cf6', borderTopColor: 'transparent', borderRadius: '50%', margin: '0 auto 15px' }} />
+                                <p className="text-muted">Loading payroll data...</p>
+                            </div>
+                        ) : (
+                            <table className="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Tutor</th><th>Month</th><th>Base Salary</th><th>Hourly Rate</th><th>Hours Logged</th>
+                                        <th>Calculated Pay <span style={{ color: '#94a3b8', fontWeight: 400, fontSize: '0.75rem' }}>(base + rate×hrs)</span></th>
+                                        <th>Status</th><th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredPayroll.map(p => {
+                                        const pay = calcPay(p);
+                                        return (
+                                            <tr key={p.id}>
+                                                <td>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.85rem', flexShrink: 0 }}>
+                                                            {p.tutorName.charAt(0)}
+                                                        </div>
+                                                        <div>
+                                                            <div className="font-semibold">{p.tutorName}</div>
+                                                            <div className="text-muted" style={{ fontSize: '0.75rem' }}>{p.subjects}</div>
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <div className="font-semibold">{p.tutorName}</div>
-                                                        <div className="text-muted" style={{ fontSize: '0.75rem' }}>{p.subjects}</div>
+                                                </td>
+                                                <td className="text-muted">{p.month}</td>
+                                                <td>${p.baseSalary.toLocaleString()}</td>
+                                                <td>${p.hourlyRate}/hr</td>
+                                                <td>{p.hoursLogged} hrs</td>
+                                                <td>
+                                                    <span style={{ fontWeight: 700, color: '#8b5cf6', fontSize: '1.05rem' }}>${pay.toLocaleString()}</span>
+                                                    <span style={{ color: '#94a3b8', fontSize: '0.72rem', display: 'block' }}>${p.baseSalary} + (${p.hourlyRate} × {p.hoursLogged})</span>
+                                                </td>
+                                                <td><span className={`status-badge ${p.paymentStatus === 'Paid' ? 'status-badge-converted' : 'status-badge-draft'}`}>{p.paymentStatus}</span></td>
+                                                <td>
+                                                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                                        {p.paymentStatus === 'Pending' && (
+                                                            <button className="fin-edit-btn" onClick={() => setEditingPayroll(p)} title="Edit">
+                                                                <FiEdit2 size={13} />
+                                                            </button>
+                                                        )}
+                                                        {p.paymentStatus === 'Pending' ? (
+                                                            <button className="btn btn-primary btn-sm" style={{ background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)', borderColor: '#8b5cf6', fontSize: '0.75rem', whiteSpace: 'nowrap', padding: '4px 10px' }} onClick={() => handleMarkPaid(p.id)}>
+                                                                <FiCheckCircle size={11} /> Mark as Paid
+                                                            </button>
+                                                        ) : (
+                                                            <span style={{ color: '#10b981', fontSize: '0.8rem', fontWeight: 600 }}>✓ Paid</span>
+                                                        )}
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td className="text-muted">{p.month}</td>
-                                            <td>${p.baseSalary.toLocaleString()}</td>
-                                            <td>${p.hourlyRate}/hr</td>
-                                            <td>{p.hoursLogged} hrs</td>
-                                            <td>
-                                                <span style={{ fontWeight: 700, color: '#8b5cf6', fontSize: '1.05rem' }}>${pay.toLocaleString()}</span>
-                                                <span style={{ color: '#94a3b8', fontSize: '0.72rem', display: 'block' }}>${p.baseSalary} + (${p.hourlyRate} × {p.hoursLogged})</span>
-                                            </td>
-                                            <td><span className={`status-badge ${p.paymentStatus === 'Paid' ? 'status-badge-converted' : 'status-badge-draft'}`}>{p.paymentStatus}</span></td>
-                                            <td>
-                                                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                                    {p.paymentStatus === 'Pending' && (
-                                                        <button className="fin-edit-btn" onClick={() => setEditingPayroll(p)} title="Edit">
-                                                            <FiEdit2 size={13} />
-                                                        </button>
-                                                    )}
-                                                    {p.paymentStatus === 'Pending' ? (
-                                                        <button className="btn btn-primary btn-sm" style={{ background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)', borderColor: '#8b5cf6', fontSize: '0.75rem', whiteSpace: 'nowrap', padding: '4px 10px' }} onClick={() => handleMarkPaid(p.id)}>
-                                                            <FiCheckCircle size={11} /> Mark as Paid
-                                                        </button>
-                                                    ) : (
-                                                        <span style={{ color: '#10b981', fontSize: '0.8rem', fontWeight: 600 }}>✓ Paid</span>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                                {filteredPayroll.length === 0 && <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No payroll records found.</td></tr>}
-                            </tbody>
-                        </table>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                    {filteredPayroll.length === 0 && <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No payroll records found.</td></tr>}
+                                </tbody>
+                            </table>
+                        )}
                     </div>
                 </div>
             )}

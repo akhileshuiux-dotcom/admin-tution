@@ -6,12 +6,24 @@ import {
     FiCalendar,
     FiDollarSign,
     FiSettings,
-    FiUserPlus
+    FiUserPlus,
+    FiLogOut
 } from 'react-icons/fi';
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import './Sidebar.css';
 
 const Sidebar = () => {
     const location = useLocation();
+    const { signOut } = useAuth();
+    const navigate = useNavigate();
+
+    const handleLogout = async () => {
+        if (window.confirm('Are you sure you want to log out?')) {
+            await signOut();
+            navigate('/login');
+        }
+    };
 
     const navItems = [
         { path: '/dashboard', label: 'Dashboard', icon: <FiHome /> },
@@ -46,10 +58,14 @@ const Sidebar = () => {
             </nav>
 
             <div className="sidebar-footer">
-                <Link to="/settings" className="nav-item">
+                <Link to="/settings" className={`nav-item ${location.pathname.startsWith('/settings') ? 'active' : ''}`}>
                     <div className="nav-icon"><FiSettings /></div>
                     <span className="nav-label">Settings</span>
                 </Link>
+                <button className="nav-item logout-nav-item" onClick={handleLogout}>
+                    <div className="nav-icon"><FiLogOut /></div>
+                    <span className="nav-label">Log Out</span>
+                </button>
             </div>
         </aside>
     );

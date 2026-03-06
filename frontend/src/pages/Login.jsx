@@ -1,22 +1,36 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiEyeOff, FiEye } from 'react-icons/fi';
+import { FiEyeOff, FiEye, FiAlertCircle } from 'react-icons/fi';
+import { useAuth } from '../context/AuthContext';
 import './Login.css';
 
 const Login = () => {
     const navigate = useNavigate();
-    const [username, setUsername] = useState('');
+    const { signIn, user } = useAuth();
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
 
-    const handleLogin = (e) => {
+    useEffect(() => {
+        if (user) {
+            navigate('/dashboard');
+        }
+    }, [user, navigate]);
+
+    const handleLogin = async (e) => {
         e.preventDefault();
         setLoading(true);
-        setTimeout(() => {
-            setLoading(false);
+        setError('');
+        try {
+            await signIn(email, password);
             navigate('/dashboard');
-        }, 1000);
+        } catch (err) {
+            setError(err.message || 'Failed to login. Please check your credentials.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -26,15 +40,22 @@ const Login = () => {
                     <h2 className="login-heading">Login</h2>
                     <p className="login-subtitle">Enter your account details</p>
 
+                    {error && (
+                        <div style={{ backgroundColor: '#fff1f2', color: '#e11d48', padding: '12px', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid #fda4af' }}>
+                            <FiAlertCircle size={16} />
+                            {error}
+                        </div>
+                    )}
+
                     <form onSubmit={handleLogin} className="login-form">
                         <div className="form-group-v2">
                             <input
-                                type="text"
+                                type="email"
                                 className="form-input-v2"
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
                                 required
-                                placeholder="Username"
+                                placeholder="Email Address"
                             />
                         </div>
 

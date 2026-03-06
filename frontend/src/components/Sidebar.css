@@ -85,4 +85,25 @@
 .sidebar-footer {
     padding: var(--spacing-md) var(--spacing-sm);
     border-top: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.logout-nav-item {
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--danger-color);
+}
+
+.logout-nav-item:hover {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: var(--danger-color);
+}
+
+.logout-nav-item .nav-icon {
+    color: var(--danger-color);
 }
