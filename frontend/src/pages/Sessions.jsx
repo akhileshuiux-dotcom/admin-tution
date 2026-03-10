@@ -1,83 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     FiChevronLeft, FiChevronRight, FiCalendar, FiVideo, FiMapPin,
-    FiCheckCircle, FiClock, FiMessageCircle, FiFileText, FiBookOpen, FiX, FiPlus
+    FiCheckCircle, FiClock, FiMessageCircle, FiFileText, FiBookOpen, FiX, FiPlus, FiLink
 } from 'react-icons/fi';
 import './Sessions.css';
 import { useSearch } from '../context/SearchContext';
+import api from '../api';
 
-const MOCK_SESSIONS = [
-    {
-        id: 'SESS01',
-        date: new Date().toISOString().split('T')[0],
-        startTime: '16:00',
-        endTime: '17:30',
-        student: 'Alex Johnson',
-        subject: 'Maths Grade 10',
-        topic: 'Quadratic Equations & Roots',
-        type: 'One-on-One',
-        mode: 'Online',
-        location: 'Zoom (ID: 948 238 102)',
-        tutor: 'Dr. Emily Chen',
-        status: 'Scheduled'
-    },
-    {
-        id: 'SESS02',
-        date: new Date().toISOString().split('T')[0],
-        startTime: '10:00',
-        endTime: '11:30',
-        student: 'Sarah Smith',
-        subject: 'Physics',
-        topic: 'Kinematics Revision',
-        type: 'Revision Batch',
-        mode: 'In-Person',
-        location: 'Room 3B',
-        tutor: 'James Wilson',
-        status: 'Live'
-    },
-    {
-        id: 'SESS03',
-        date: new Date().toISOString().split('T')[0],
-        startTime: '08:00',
-        endTime: '09:00',
-        student: 'Lucas Martinez',
-        subject: 'Chemistry',
-        topic: 'Organic Chemistry Basics',
-        type: 'One-on-One',
-        mode: 'Online',
-        location: 'Google Meet',
-        tutor: 'Priya Sharma',
-        status: 'Completed'
-    },
-    {
-        id: 'SESS04',
-        date: new Date().toISOString().split('T')[0],
-        startTime: '18:00',
-        endTime: '19:00',
-        student: 'Emma Wilson',
-        subject: 'Biology',
-        topic: 'Cell Structure',
-        type: 'Group',
-        mode: 'In-Person',
-        location: 'Room 1A',
-        tutor: 'Priya Sharma',
-        status: 'Cancelled'
-    }
-];
-
-const DEMO_STUDENTS = [
-    { id: 'STU001', name: 'Alex Johnson', grade: 'Grade 10' },
-    { id: 'STU002', name: 'Sarah Smith', grade: 'Grade 11' },
-    { id: 'STU003', name: 'Lucas Martinez', grade: 'Grade 12' },
-    { id: 'STU004', name: 'Emma Wilson', grade: 'Grade 9' },
-    { id: 'STU005', name: 'Michael Brown', grade: 'Grade 10' },
-    { id: 'STU006', name: 'Sophia Davis', grade: 'Grade 11' },
-    { id: 'STU007', name: 'Oliver Garcia', grade: 'Grade 8' }
-];
 
 const Sessions = () => {
     // State Management
-    const [sessions, setSessions] = useState(MOCK_SESSIONS);
+    const [sessions, setSessions] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [tutorsList, setTutorsList] = useState([]);
+    const [studentsList, setStudentsList] = useState([]);
     const [currentDate, setCurrentDate] = useState(new Date());
     const [viewMode, setViewMode] = useState('list'); // 'list', 'day', 'week'
     const [filters, setFilters] = useState({
@@ -96,7 +32,50 @@ const Sessions = () => {
         time: '',
         topic: ''
     });
+    const [rescheduleData, setRescheduleData] = useState({ date: '', time: '' });
     const { searchQuery } = useSearch();
+
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            const [sessRes, tutorsRes, studentsRes] = await Promise.all([
+                api.get('/sessions/'),
+                api.get('/tutors/'),
+                api.get('/students/')
+            ]);
+
+            setTutorsList(tutorsRes.data);
+            setStudentsList(studentsRes.data);
+
+            const mapped = sessRes.data.map(s => ({
+                id: s.id || s._id,
+                date: s.scheduledDate,
+                startTime: s.scheduledTime,
+                endTime: s.endTime || '??:??',
+                student: s.studentName,
+                subject: s.subject || 'N/A',
+                topic: s.topic || 'N/A',
+                type: s.type || 'One-on-One',
+                mode: s.mode || 'Online',
+                location: s.location || (s.mode === 'Online' ? 'Zoom/Meet' : 'Room TBD'),
+                tutor: s.tutorName,
+                status: s.status,
+                googleMeetLink: s.googleMeetLink,
+                fullData: s
+            }));
+
+            setSessions(mapped);
+        } catch (err) {
+            console.error("Failed to fetch sessions data:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
 
     // Date Navigation
     const handlePrevDay = () => {
@@ -130,12 +109,12 @@ const Sessions = () => {
             setNewSessionForm({ ...newSessionForm, studentId: '', studentName: '', grade: '' });
             return;
         }
-        const student = DEMO_STUDENTS.find(s => s.id === studentId);
+        const student = studentsList.find(s => (s.id || s._id).toString() === studentId.toString());
         setNewSessionForm({
             ...newSessionForm,
-            studentId: student.id,
+            studentId: studentId,
             studentName: student.name,
-            grade: student.grade
+            grade: student.grade || 'N/A'
         });
     };
 
@@ -143,38 +122,40 @@ const Sessions = () => {
         setNewSessionForm({ ...newSessionForm, [e.target.name]: e.target.value });
     };
 
-    const handleSaveSession = () => {
+    const handleSaveSession = async () => {
         if (!newSessionForm.studentName || !newSessionForm.date || !newSessionForm.time || !newSessionForm.tutor) {
             alert('Please fill out all the required fields: Student Name, Date, Time, and Assign Tutor.');
             return;
         }
 
-        const newSession = {
-            id: `SESS${Math.floor(Math.random() * 10000)}`,
+        const payload = {
+            student_id: newSessionForm.studentId,
+            tutor_id: newSessionForm.tutor, // This should be the ID
             date: newSessionForm.date,
-            startTime: newSessionForm.time,
-            endTime: '??:??', // Mock end time
-            student: newSessionForm.studentName,
+            start_time: newSessionForm.time,
+            topic: newSessionForm.topic,
             subject: newSessionForm.topic ? newSessionForm.topic.split(' - ')[0] : 'General',
-            topic: newSessionForm.topic && newSessionForm.topic.includes(' - ') ? newSessionForm.topic.split(' - ')[1] : newSessionForm.topic,
-            type: 'One-on-One',
-            mode: 'Online',
-            location: 'TBD',
-            tutor: newSessionForm.tutor,
-            status: 'Scheduled'
+            status: 'Scheduled',
+            mode: 'Online'
         };
 
-        setSessions([...sessions, newSession]);
+        try {
+            await api.post('/sessions/', payload);
+            fetchData();
 
-        // Auto-navigate the calendar to the date of the newly created session
-        const [year, month, day] = newSessionForm.date.split('-');
-        setCurrentDate(new Date(year, month - 1, day));
+            // Auto-navigate
+            const [year, month, day] = newSessionForm.date.split('-');
+            setCurrentDate(new Date(year, month - 1, day));
 
-        // Reset form
-        setNewSessionForm({
-            studentId: '', studentName: '', grade: '', tutor: '', date: '', time: '', topic: ''
-        });
-        setActiveAction(null);
+            // Reset form
+            setNewSessionForm({
+                studentId: '', studentName: '', grade: '', tutor: '', date: '', time: '', topic: ''
+            });
+            setActiveAction(null);
+        } catch (err) {
+            console.error("Error creating session:", err);
+            alert("Failed to save session.");
+        }
     };
 
     // Filter Logic
@@ -182,11 +163,93 @@ const Sessions = () => {
         setFilters({ ...filters, [e.target.name]: e.target.value });
     };
 
-    const handleMarkAttendance = (sessionId) => {
-        setSessions(prev => prev.map(s =>
-            s.id === sessionId ? { ...s, status: 'Completed' } : s
-        ));
-        // Note: In a real app, this would be an API call
+    const handleMarkAttendance = async (sessionId) => {
+        try {
+            await api.patch(`/sessions/${sessionId}/`, { status: 'Completed' });
+            setSessions(prev => prev.map(s =>
+                s.id === sessionId ? { ...s, status: 'Completed' } : s
+            ));
+        } catch (err) {
+            console.error("Attendance failed:", err);
+        }
+    };
+
+    const handleCancelSession = async (sessionId) => {
+        if (window.confirm('Are you sure you want to cancel this meeting?')) {
+            try {
+                await api.patch(`/sessions/${sessionId}/`, { status: 'Cancelled' });
+                setSessions(prev => prev.map(s =>
+                    s.id === sessionId ? { ...s, status: 'Cancelled' } : s
+                ));
+            } catch (err) {
+                console.error("Cancel failed:", err);
+            }
+        }
+    };
+
+    const handleCopyLink = async (link, e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+            if (navigator?.clipboard?.writeText) {
+                await navigator.clipboard.writeText(link);
+                alert('Meeting link copied to clipboard!');
+                return;
+            }
+            throw new Error('Clipboard API unavailable');
+        } catch (err) {
+            // Fallback
+            const textArea = document.createElement("textarea");
+            textArea.value = link;
+            textArea.style.position = "fixed";
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.opacity = "0";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    alert('Meeting link copied to clipboard!');
+                } else {
+                    alert('Could not copy automatically. Link: ' + link);
+                }
+            } catch (e) {
+                alert('Could not copy automatically. Link: ' + link);
+            }
+            document.body.removeChild(textArea);
+        }
+    };
+
+    const handleRescheduleClick = (session) => {
+        setRescheduleData({ date: session.date, time: session.startTime });
+        setActiveAction({ type: 'reschedule', session });
+    };
+
+    const handleSaveReschedule = async () => {
+        if (!rescheduleData.date || !rescheduleData.time) {
+            alert('Please select both date and time.');
+            return;
+        }
+
+        try {
+            const sessId = activeAction.session.id;
+            await api.patch(`/sessions/${sessId}/`, {
+                date: rescheduleData.date,
+                start_time: rescheduleData.time
+            });
+
+            fetchData();
+
+            // Navigate to the new date
+            const [year, month, day] = rescheduleData.date.split('-');
+            setCurrentDate(new Date(year, month - 1, day));
+
+            setActiveAction(null);
+        } catch (err) {
+            console.error("Reschedule failed:", err);
+        }
     };
 
     const filteredSessions = sessions.filter(session => {
@@ -209,7 +272,7 @@ const Sessions = () => {
                 session.topic?.toLowerCase().includes(q) ||
                 session.location?.toLowerCase().includes(q) ||
                 session.type?.toLowerCase().includes(q) ||
-                session.id?.toLowerCase().includes(q);
+                session.id?.toString().toLowerCase().includes(q);
             if (!match) return false;
         }
 
@@ -235,11 +298,6 @@ const Sessions = () => {
                     <p className="text-muted">Manage your upcoming classes and mark attendance.</p>
                 </div>
                 <div className="flex items-center gap-4">
-                    <div className="view-toggle glass-panel">
-                        <button className={`toggle-btn ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')}>List</button>
-                        <button className={`toggle-btn ${viewMode === 'day' ? 'active' : ''}`} onClick={() => setViewMode('day')}>Day</button>
-                        <button className={`toggle-btn ${viewMode === 'week' ? 'active' : ''}`} onClick={() => setViewMode('week')}>Week</button>
-                    </div>
                     <button className="btn btn-primary" style={{ backgroundColor: '#3b82f6', color: 'white', border: 'none' }} onClick={() => setActiveAction({ type: 'add_session', session: null })}>
                         <FiPlus className="mr-2" /> Add Session
                     </button>
@@ -259,9 +317,9 @@ const Sessions = () => {
                 <div className="filter-bar">
                     <select className="form-select filter-select" name="tutor" value={filters.tutor} onChange={handleFilterChange}>
                         <option value="All">All Tutors</option>
-                        <option value="Dr. Emily Chen">Dr. Emily Chen</option>
-                        <option value="James Wilson">James Wilson</option>
-                        <option value="Priya Sharma">Priya Sharma</option>
+                        {tutorsList.map(t => (
+                            <option key={t.id} value={t.name}>{t.name}</option>
+                        ))}
                     </select>
                     <select className="form-select filter-select" name="subject" value={filters.subject} onChange={handleFilterChange}>
                         <option value="All">All Subjects</option>
@@ -287,7 +345,12 @@ const Sessions = () => {
 
             {/* Sessions List */}
             <div className="sessions-list">
-                {filteredSessions.length === 0 ? (
+                {loading ? (
+                    <div className="flex flex-col items-center justify-center p-20 glass-panel">
+                        <div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full mb-4"></div>
+                        <p className="text-muted">Loading sessions...</p>
+                    </div>
+                ) : filteredSessions.length === 0 ? (
                     <div className="empty-state glass-panel text-center p-8">
                         <FiCalendar size={48} className="text-muted mx-auto mb-4" opacity={0.5} />
                         <h3 className="h3">No Sessions Scheduled</h3>
@@ -313,7 +376,7 @@ const Sessions = () => {
 
                                     <div className="details-col flex-1 pl-4" style={{ borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
                                         <div className="flex items-center gap-3 mb-1">
-                                            <h3 className="h3 mb-0" style={{ fontSize: '1.2rem' }}>{sess.student}</h3>
+                                            <h3 className="h3 mb-0" style={{ fontSize: '1.2rem' }}>{sess.student || 'Unknown Student'}</h3>
                                             <span className={`badge-pill ${getStatusClass(sess.status)}`}>
                                                 {sess.status === 'Live' && <span className="pulse-dot"></span>}
                                                 {sess.status}
@@ -324,8 +387,8 @@ const Sessions = () => {
                                         </div>
                                         <div className="meta-line flex gap-4 text-muted text-sm items-center mt-2">
                                             <span className="flex items-center gap-1">
-                                                <div className="micro-avatar">{sess.tutor.charAt(0)}</div>
-                                                {sess.tutor}
+                                                <div className="micro-avatar">{(sess.tutor || 'T').charAt(0)}</div>
+                                                {sess.tutor || 'Unassigned'}
                                             </span>
                                             <span className="flex items-center gap-1">
                                                 {sess.mode === 'Online' ? <FiVideo size={14} /> : <FiMapPin size={14} />}
@@ -338,19 +401,39 @@ const Sessions = () => {
                                 {/* Actions */}
                                 <div className="session-actions flex gap-3 items-center shrink-0">
                                     <div className="secondary-actions flex gap-2 mr-2 border-r pr-4 border-white-10">
+                                        <button className="icon-btn-small tooltip-wrap" title="Reschedule" onClick={() => handleRescheduleClick(sess)}><FiClock size={16} /></button>
                                         <button className="icon-btn-small tooltip-wrap" title="Message Student" onClick={() => setActiveAction({ type: 'message', session: sess })}><FiMessageCircle size={16} /></button>
                                         <button className="icon-btn-small tooltip-wrap" title="Lesson Materials" onClick={() => setActiveAction({ type: 'materials', session: sess })}><FiFileText size={16} /></button>
                                         <button className="icon-btn-small tooltip-wrap" title="Private Notes" onClick={() => setActiveAction({ type: 'notes', session: sess })}><FiBookOpen size={16} /></button>
                                     </div>
 
-                                    {sess.status === 'Scheduled' || sess.status === 'Live' ? (
-                                        <button
-                                            className="btn btn-primary bg-success"
-                                            style={{ backgroundColor: 'var(--success-color)', borderColor: 'var(--success-color)' }}
-                                            onClick={() => handleMarkAttendance(sess.id)}
-                                        >
-                                            <FiCheckCircle className="mr-2" /> Mark Attendance
-                                        </button>
+
+                                    {sess.status === 'Scheduled' || sess.status === 'Live' || sess.status === 'Ongoing' ? (
+                                        <div className="flex gap-2">
+                                            {sess.googleMeetLink && (
+                                                <button
+                                                    className="btn btn-secondary"
+                                                    style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem' }}
+                                                    onClick={(e) => handleCopyLink(sess.googleMeetLink, e)}
+                                                >
+                                                    <FiLink className="mr-1" /> Copy Link
+                                                </button>
+                                            )}
+                                            <button
+                                                className="btn btn-secondary"
+                                                style={{ borderColor: 'var(--danger-color)', color: 'var(--danger-color)', padding: '0.4rem 0.8rem', fontSize: '0.875rem' }}
+                                                onClick={() => handleCancelSession(sess.id)}
+                                            >
+                                                <FiX className="mr-1" /> Cancel
+                                            </button>
+                                            <button
+                                                className="btn btn-primary bg-success"
+                                                style={{ backgroundColor: 'var(--success-color)', borderColor: 'var(--success-color)' }}
+                                                onClick={() => handleMarkAttendance(sess.id)}
+                                            >
+                                                <FiCheckCircle className="mr-2" /> Mark Attendance
+                                            </button>
+                                        </div>
                                     ) : sess.status === 'Completed' ? (
                                         <button className="btn btn-secondary" onClick={() => setActiveAction({ type: 'report', session: sess })}>
                                             <FiFileText className="mr-2" /> View Report
@@ -377,7 +460,9 @@ const Sessions = () => {
                                 {activeAction.type === 'materials' && activeAction.session && `Materials for ${activeAction.session.topic}`}
                                 {activeAction.type === 'notes' && activeAction.session && `Private Notes: ${activeAction.session.student}`}
                                 {activeAction.type === 'report' && activeAction.session && `Session Report: ${activeAction.session.student}`}
+                                {activeAction.type === 'reschedule' && activeAction.session && `Reschedule: ${activeAction.session.student}`}
                                 {activeAction.type === 'add_session' && `Add New Session`}
+
                             </h2>
                             <button className="icon-btn" onClick={() => setActiveAction(null)} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer' }}><FiX size={24} /></button>
                         </div>
@@ -417,6 +502,34 @@ const Sessions = () => {
                                     </div>
                                 </div>
                             )}
+                            {activeAction.type === 'reschedule' && (
+                                <div style={{ textAlign: 'left', color: '#334155', fontSize: '0.95rem' }}>
+                                    <div style={{ marginBottom: '16px' }}>
+                                        <label style={{ display: 'block', marginBottom: '8px', color: '#64748b', fontSize: '0.85rem' }}>New Date</label>
+                                        <input
+                                            type="date"
+                                            className="form-input"
+                                            style={{ width: '100%', backgroundColor: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1' }}
+                                            value={rescheduleData.date}
+                                            onChange={(e) => setRescheduleData({ ...rescheduleData, date: e.target.value })}
+                                        />
+                                    </div>
+                                    <div style={{ marginBottom: '24px' }}>
+                                        <label style={{ display: 'block', marginBottom: '8px', color: '#64748b', fontSize: '0.85rem' }}>New Time</label>
+                                        <input
+                                            type="time"
+                                            className="form-input"
+                                            style={{ width: '100%', backgroundColor: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1' }}
+                                            value={rescheduleData.time}
+                                            onChange={(e) => setRescheduleData({ ...rescheduleData, time: e.target.value })}
+                                        />
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                                        <button className="btn btn-secondary" style={{ backgroundColor: 'white', color: '#334155', border: '1px solid #e2e8f0' }} onClick={() => setActiveAction(null)}>Cancel</button>
+                                        <button className="btn btn-primary" style={{ backgroundColor: '#3b82f6', color: 'white', border: 'none' }} onClick={handleSaveReschedule}>Update Schedule</button>
+                                    </div>
+                                </div>
+                            )}
                             {activeAction.type === 'add_session' && (
                                 <div style={{ textAlign: 'left', color: '#334155', fontSize: '0.95rem' }}>
                                     <div style={{ marginBottom: '12px' }}>
@@ -428,7 +541,7 @@ const Sessions = () => {
                                             value={newSessionForm.studentId}
                                         >
                                             <option value="">Select a student...</option>
-                                            {DEMO_STUDENTS.map(student => (
+                                            {studentsList.map(student => (
                                                 <option key={student.id} value={student.id}>{student.name}</option>
                                             ))}
                                         </select>
@@ -456,9 +569,9 @@ const Sessions = () => {
                                                 onChange={handleFormChange}
                                             >
                                                 <option value="">Select Tutor...</option>
-                                                <option value="Dr. Emily Chen">Dr. Emily Chen</option>
-                                                <option value="James Wilson">James Wilson</option>
-                                                <option value="Priya Sharma">Priya Sharma</option>
+                                                {tutorsList.map(t => (
+                                                    <option key={t.id} value={t.id}>{t.name}</option>
+                                                ))}
                                             </select>
                                         </div>
                                     </div>

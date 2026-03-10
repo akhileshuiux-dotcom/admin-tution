@@ -1,18 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FiPlus, FiFilter, FiMoreVertical, FiStar, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import './Tutors.css';
 import TutorProfileModal from '../components/TutorProfileModal';
 import NewTutorModal from '../components/NewTutorModal';
 import { useSearch } from '../context/SearchContext';
-
-const MOCK_TUTORS = [
-    { id: 'TUT001', name: 'Dr. Emily Chen', subjects: 'Physics, Maths', experience: '5 Years', status: 'Active', rating: 4.8 },
-    { id: 'TUT002', name: 'James Wilson', subjects: 'English Literature', experience: '3 Years', status: 'Scheduled Leave', rating: 4.5 },
-    { id: 'TUT003', name: 'Priya Sharma', subjects: 'Chemistry, Biology', experience: '7 Years', status: 'Active', rating: 4.9 },
-];
+import api from '../api';
 
 const Tutors = () => {
-    const [tutors, setTutors] = useState(MOCK_TUTORS);
+    const [tutors, setTutors] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [selectedTutor, setSelectedTutor] = useState(null);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [activeDropdown, setActiveDropdown] = useState(null);
@@ -21,25 +17,70 @@ const Tutors = () => {
     const [filters, setFilters] = useState({ name: '', subjects: '', status: '' });
     const { searchQuery } = useSearch();
 
-    const handleAddTutor = (formData) => {
-        if (editingTutor) {
-            setTutors(tutors.map(t => t.id === editingTutor.id ? { ...t, ...formData } : t));
-            setEditingTutor(null);
-        } else {
-            const newTutor = {
-                id: `TUT00${Math.floor(Math.random() * 1000)}`,
-                name: formData.name,
-                subjects: formData.subjects,
-                experience: formData.experience,
-                status: formData.status,
-                rating: 5.0 // Default rating for new tutors
-            };
-            setTutors([newTutor, ...tutors]);
+    const fetchTutors = async () => {
+        setLoading(true);
+        try {
+            const res = await api.get('/tutors/');
+            const mapped = res.data.map(t => ({
+                id: (t.id || t._id).toString().startsWith('TUT') ? t.id : `TUT${(t.id || t._id).toString().padStart(3, '0')}`,
+                name: t.name,
+                subjects: t.classesCanTeach || t.subjects || 'N/A', // Django returns classesCanTeach from the serializer update
+                experience: `${t.teachingExperienceMonths || 0} Mo`,
+                status: t.status,
+                rating: 4.8, // Static mock for now as backend doesn't track rating
+                fullData: t
+            }));
+            setTutors(mapped);
+        } catch (err) {
+            console.error("Failed to fetch tutors:", err);
+        } finally {
+            setLoading(false);
         }
     };
 
-    const handleDeleteTutor = (id) => {
-        setTutors(tutors.filter(t => t.id !== id));
+    useEffect(() => {
+        fetchTutors();
+    }, []);
+
+    const handleAddTutor = async (formData) => {
+        const payload = {
+            user: {
+                name: formData.name,
+                email: formData.email || `${formData.name.toLowerCase().replace(' ', '.')}@example.com`,
+                role: 'Tutor',
+                password: 'password123' // Set a default password if creating user
+            },
+            contact_number: formData.contactNumber || '0000000000',
+            status: formData.status,
+            classes_can_teach: formData.subjects,
+            teaching_experience_months: parseInt(formData.experience) || 0
+        };
+
+        try {
+            if (editingTutor) {
+                const tutorId = editingTutor.fullData?.id || editingTutor.id;
+                await api.patch(`/tutors/${tutorId}/`, payload);
+                fetchTutors();
+            } else {
+                await api.post('/tutors/', payload);
+                fetchTutors();
+            }
+            setIsAddModalOpen(false);
+            setEditingTutor(null);
+        } catch (err) {
+            console.error("Error saving tutor:", err);
+            alert("Failed to save tutor. Check console for details.");
+        }
+    };
+
+    const handleDeleteTutor = async (id, dbId) => {
+        if (!window.confirm("Are you sure you want to delete this tutor?")) return;
+        try {
+            await api.delete(`/tutors/${dbId || id}/`);
+            setTutors(tutors.filter(t => t.id !== id));
+        } catch (err) {
+            console.error("Delete failed:", err);
+        }
         setActiveDropdown(null);
     };
 
@@ -58,8 +99,6 @@ const Tutors = () => {
         const matchesGlobalSearch = q === '' ||
             tutor.name?.toLowerCase().includes(q) ||
             tutor.subjects?.toLowerCase().includes(q) ||
-            tutor.experience?.toLowerCase().includes(q) ||
-            tutor.status?.toLowerCase().includes(q) ||
             tutor.id?.toLowerCase().includes(q);
 
         return matchesGlobalSearch &&
@@ -99,51 +138,61 @@ const Tutors = () => {
                 </div>
             )}
 
-            <div className="tutors-grid">
-                {filteredTutors.map((tutor) => (
-                    <div key={tutor.id} className="tutor-card glass-panel">
-                        <div className="tutor-card-header">
-                            <div className="tutor-avatar">{tutor.name.charAt(0)}</div>
-                            <div className="tutor-actions" style={{ position: 'relative' }}>
-                                <button className="icon-btn text-muted" onClick={(e) => { e.stopPropagation(); toggleDropdown(tutor.id); }}>
-                                    <FiMoreVertical />
-                                </button>
-                                {activeDropdown === tutor.id && (
-                                    <div className="dropdown-menu glass-panel animate-fade-in" style={{ position: 'absolute', right: 0, top: '100%', minWidth: '130px', zIndex: 10, padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', borderRadius: '8px', boxShadow: 'var(--shadow-lg)' }} onClick={(e) => e.stopPropagation()}>
-                                        <button className="btn btn-sm" style={{ justifyContent: 'flex-start', background: 'transparent', border: 'none', color: 'var(--text-main)', padding: '0.5rem 0.75rem', width: '100%' }} onClick={() => handleEditClick(tutor)}>
-                                            <FiEdit2 size={14} style={{ marginRight: '0.75rem' }} /> Edit
-                                        </button>
-                                        <button className="btn btn-sm" style={{ justifyContent: 'flex-start', background: 'transparent', border: 'none', color: 'var(--danger-color)', padding: '0.5rem 0.75rem', width: '100%' }} onClick={() => handleDeleteTutor(tutor.id)}>
-                                            <FiTrash2 size={14} style={{ marginRight: '0.75rem' }} /> Remove
-                                        </button>
+            {loading ? (
+                <div className="flex flex-col items-center justify-center p-20">
+                    <div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full mb-4"></div>
+                    <p className="text-muted">Loading tutors from database...</p>
+                </div>
+            ) : (
+                <div className="tutors-grid">
+                    {filteredTutors.map((tutor) => (
+                        <div key={tutor.id} className="tutor-card glass-panel">
+                            <div className="tutor-card-header">
+                                <div className="tutor-avatar">{tutor.name.charAt(0)}</div>
+                                <div className="tutor-actions" style={{ position: 'relative' }}>
+                                    <button className="icon-btn text-muted" onClick={(e) => { e.stopPropagation(); toggleDropdown(tutor.id); }}>
+                                        <FiMoreVertical />
+                                    </button>
+                                    {activeDropdown === tutor.id && (
+                                        <div className="dropdown-menu glass-panel animate-fade-in" style={{ position: 'absolute', right: 0, top: '100%', minWidth: '130px', zIndex: 10, padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', borderRadius: '8px', boxShadow: 'var(--shadow-lg)' }} onClick={(e) => e.stopPropagation()}>
+                                            <button className="btn btn-sm" style={{ justifyContent: 'flex-start', background: 'transparent', border: 'none', color: 'var(--text-main)', padding: '0.5rem 0.75rem', width: '100%' }} onClick={() => handleEditClick(tutor)}>
+                                                <FiEdit2 size={14} style={{ marginRight: '0.75rem' }} /> Edit
+                                            </button>
+                                            <button className="btn btn-sm" style={{ justifyContent: 'flex-start', background: 'transparent', border: 'none', color: 'var(--danger-color)', padding: '0.5rem 0.75rem', width: '100%' }} onClick={() => handleDeleteTutor(tutor.id, tutor.fullData?.id)}>
+                                                <FiTrash2 size={14} style={{ marginRight: '0.75rem' }} /> Remove
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="tutor-card-body">
+                                <h3 className="tutor-name font-semibold">{tutor.name}</h3>
+                                <p className="tutor-subjects text-muted">{typeof tutor.subjects === 'string' ? tutor.subjects : JSON.stringify(tutor.subjects)}</p>
+
+                                <div className="tutor-stats">
+                                    <div className="stat-pill">
+                                        <FiStar style={{ color: 'var(--warning-color)' }} /> {tutor.rating}
                                     </div>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="tutor-card-body">
-                            <h3 className="tutor-name font-semibold">{tutor.name}</h3>
-                            <p className="tutor-subjects text-muted">{tutor.subjects}</p>
-
-                            <div className="tutor-stats">
-                                <div className="stat-pill">
-                                    <FiStar style={{ color: 'var(--warning-color)' }} /> {tutor.rating}
+                                    <div className="stat-pill">
+                                        {tutor.experience}
+                                    </div>
                                 </div>
-                                <div className="stat-pill">
-                                    {tutor.experience}
+
+                                <div className="tutor-footer flex justify-between mt-4 items-center">
+                                    <span className={`status-badge ${tutor.status === 'Active' ? 'status-badge-open' : 'status-badge-draft'}`}>
+                                        {tutor.status}
+                                    </span>
+                                    <button className="btn btn-secondary btn-sm" onClick={() => setSelectedTutor(tutor)}>View Profile</button>
                                 </div>
                             </div>
-
-                            <div className="tutor-footer flex justify-between mt-4 items-center">
-                                <span className={`status-badge ${tutor.status === 'Active' ? 'status-badge-open' : 'status-badge-draft'}`}>
-                                    {tutor.status}
-                                </span>
-                                <button className="btn btn-secondary btn-sm" onClick={() => setSelectedTutor(tutor)}>View Profile</button>
-                            </div>
                         </div>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                    {filteredTutors.length === 0 && (
+                        <div className="col-span-full py-10 text-center text-muted">No tutors found.</div>
+                    )}
+                </div>
+            )}
 
             <TutorProfileModal
                 isOpen={!!selectedTutor}

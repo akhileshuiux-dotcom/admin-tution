@@ -275,3 +275,72 @@ class TutorPayroll(models.Model):
 
     def __str__(self):
         return f"{self.tutor_name} - {self.month}: {self.calculated_pay}"
+
+class ExamSchedule(models.Model):
+    CATEGORY_CHOICES = (
+        ('Internal', 'Internal'),
+        ('Mock', 'Mock'),
+        ('School/Board', 'School/Board'),
+    )
+    STATUS_CHOICES = (
+        ('Scheduled', 'Scheduled'),
+        ('Ongoing', 'Ongoing'),
+        ('Completed', 'Completed'),
+        ('Evaluated', 'Evaluated'),
+        ('Postponed', 'Postponed'),
+    )
+
+    name = models.CharField(max_length=150)
+    category = models.CharField(max_length=30, choices=CATEGORY_CHOICES)
+    date = models.DateField()
+    time = models.CharField(max_length=50) # "HH:MM" format
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='exams', null=True, blank=True)
+    plan = models.ForeignKey(Plan, on_delete=models.SET_NULL, null=True, blank=True, related_name='exams')
+    syllabus = models.TextField(blank=True, null=True)
+    
+    # Enhanced Configuration
+    duration = models.IntegerField(default=60, help_text="Duration in minutes")
+    buffer_time = models.IntegerField(default=0, help_text="Buffer time in minutes")
+    auto_submit = models.BooleanField(default=True)
+    timer_expiry_action = models.CharField(
+        max_length=20, 
+        choices=[('AUTO_SUBMIT', 'Auto-submit'), ('ALLOW_OVERTIME', 'Allow Overtime')],
+        default='AUTO_SUBMIT'
+    )
+    mixed_mode = models.BooleanField(default=False)
+    tutor = models.ForeignKey(Tutor, on_delete=models.SET_NULL, null=True, blank=True, related_name='proctored_exams')
+    
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='Scheduled')
+    
+    # Results fields
+    marks_obtained = models.FloatField(null=True, blank=True)
+    total_marks = models.FloatField(null=True, blank=True)
+    feedback = models.TextField(blank=True, null=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} - {self.date}"
+
+class ExamQuestion(models.Model):
+    QUESTION_TYPES = [
+        ('MCQ', 'Multiple Choice'),
+        ('SHORT', 'Short Test'),
+        ('LONG', 'Long Test'),
+        ('YES_NO', 'Yes/No'),
+    ]
+    
+    exam = models.ForeignKey(ExamSchedule, related_name='questions', on_delete=models.CASCADE)
+    question_type = models.CharField(max_length=10, choices=QUESTION_TYPES)
+    text = models.TextField()
+    marks = models.IntegerField(default=1)
+    order = models.IntegerField(default=0)
+    payload = models.JSONField(default=dict, help_text="Stores options, correct answers, etc.")
+    media = models.FileField(upload_to='exam_media/', blank=True, null=True)
+
+    class Meta:
+        ordering = ['order']
+
+    def __str__(self):
+        return f"{self.exam.name} - Q{self.order} ({self.question_type})"

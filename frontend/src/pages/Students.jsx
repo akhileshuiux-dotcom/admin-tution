@@ -6,21 +6,9 @@ import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 import api from '../api';
 import { useSearch } from '../context/SearchContext';
 
-const MOCK_STUDENTS = [
-    { id: 'STU001', name: 'Alex Johnson', grade: 'Grade 10', subject: 'Maths, Science', enrolledDate: '2026-03-01', status: 'Active', tutor: 'Sarah Jenkins' },
-    { id: 'STU002', name: 'Michael Brown', grade: 'Grade 8', subject: 'English Literature', enrolledDate: '2026-02-15', status: 'Active', tutor: 'David Lee' },
-    { id: 'STU003', name: 'Emily Chen', grade: 'Grade 11', subject: 'Physics, Chemistry', enrolledDate: '2026-01-20', status: 'Inactive', tutor: 'Unassigned' },
-    { id: 'STU004', name: 'Daniel Kim', grade: 'Grade 9', subject: 'History', enrolledDate: '2026-03-02', status: 'Active', tutor: 'Sarah Jenkins' },
-    { id: 'STU005', name: 'Sophia Martinez', grade: 'Grade 12', subject: 'Advanced Mathematics', enrolledDate: '2025-11-10', status: 'Graduated', tutor: 'Robert Fox' },
-    { id: 'STU006', name: 'Liam Wilson', grade: 'Grade 7', subject: 'General Science', enrolledDate: '2026-03-03', status: 'Active', tutor: 'David Lee' },
-    { id: 'STU007', name: 'Isabella Taylor', grade: 'Grade 10', subject: 'Spanish', enrolledDate: '2025-12-05', status: 'Active', tutor: 'Robert Fox' },
-    { id: 'STU008', name: 'William Anderson', grade: 'Grade 8', subject: 'Maths', enrolledDate: '2026-02-28', status: 'Active', tutor: 'Sarah Jenkins' },
-    { id: 'STU009', name: 'Mia Thomas', grade: 'Grade 11', subject: 'Biology', enrolledDate: '2026-01-15', status: 'Inactive', tutor: 'Unassigned' },
-    { id: 'STU010', name: 'James Jackson', grade: 'Grade 12', subject: 'Economics', enrolledDate: '2025-10-22', status: 'Graduated', tutor: 'David Lee' },
-];
-
 const Students = () => {
-    const [students, setStudents] = useState(MOCK_STUDENTS);
+    const [students, setStudents] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingStudent, setEditingStudent] = useState(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -29,28 +17,29 @@ const Students = () => {
     const [filters, setFilters] = useState({ name: '', grade: '', status: '' });
     const { searchQuery } = useSearch();
 
+    const fetchStudents = async () => {
+        setLoading(true);
+        try {
+            const res = await api.get('/students/');
+            const fetched = res.data.map(stu => ({
+                id: 'STU' + (stu.id || stu._id).toString().substring((stu.id || stu._id).toString().length - 4).toUpperCase(),
+                name: stu.fullName,
+                grade: stu.grade,
+                subject: stu.syllabus || 'N/A',
+                enrolledDate: stu.createdAt,
+                status: stu.status || 'Active',
+                tutor: stu.tutorName || 'Unassigned',
+                fullData: stu
+            }));
+            setStudents(fetched);
+        } catch (err) {
+            console.error("Failed to fetch students:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchStudents = async () => {
-            const offlineStudents = JSON.parse(localStorage.getItem('offlineStudents') || '[]');
-            try {
-                const res = await api.get('/students');
-                const fetched = res.data.map(stu => ({
-                    id: 'STU' + stu._id.substring(stu._id.length - 4).toUpperCase(),
-                    name: stu.fullName,
-                    grade: stu.grade,
-                    subject: stu.syllabus || 'N/A',
-                    enrolledDate: stu.createdAt,
-                    status: stu.status || 'Active',
-                    tutor: 'Unassigned',
-                    fullData: stu
-                }));
-                // Combine with mock data
-                setStudents([...offlineStudents, ...fetched, ...MOCK_STUDENTS]);
-            } catch (err) {
-                console.error("Failed to fetch real students from DB. Backend may be offline.", err);
-                setStudents([...offlineStudents, ...MOCK_STUDENTS]);
-            }
-        };
         fetchStudents();
     }, []);
 

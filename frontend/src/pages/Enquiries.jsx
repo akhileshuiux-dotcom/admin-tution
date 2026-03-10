@@ -4,43 +4,44 @@ import { useNavigate } from 'react-router-dom';
 import './Enquiries.css';
 import NewEnquiryModal from '../components/NewEnquiryModal';
 import CompleteEnrollmentModal from '../components/CompleteEnrollmentModal';
+import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 import { useSearch } from '../context/SearchContext';
 import api from '../api';
 
-const MOCK_ENQUIRIES = [
-    { id: 'ENQ001', studentName: 'Alex Johnson', grade: 'Grade 10', subject: 'Maths', status: 'New', date: '2026-03-01' },
-    { id: 'ENQ002', studentName: 'Sarah Smith', grade: 'Grade 12', subject: 'Physics', status: 'Processing', date: '2026-03-02' },
-    { id: 'ENQ003', studentName: 'Michael Brown', grade: 'Grade 8', subject: 'English', status: 'Completed', date: '2026-03-03' },
-];
-
 const Enquiries = () => {
     const navigate = useNavigate();
-    const [enquiries, setEnquiries] = useState(MOCK_ENQUIRIES);
+    const [enquiries, setEnquiries] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingEnquiry, setEditingEnquiry] = useState(null);
     const [enrollmentModalData, setEnrollmentModalData] = useState(null);
+    const [deleteModalData, setDeleteModalData] = useState(null);
     const [showFilters, setShowFilters] = useState(false);
     const [filters, setFilters] = useState({ studentName: '', grade: '', status: '' });
     const { searchQuery } = useSearch();
 
+    const fetchEnquiries = async () => {
+        setLoading(true);
+        try {
+            const res = await api.get('/enquiries/');
+            const fetched = res.data.map(enq => ({
+                id: (enq.id || enq._id).toString().substring((enq.id || enq._id).toString().length - 6).toUpperCase(),
+                studentName: enq.studentName,
+                grade: enq.grade,
+                subject: enq.syllabus || 'N/A',
+                date: enq.createdAt,
+                status: enq.status,
+                fullData: enq
+            }));
+            setEnquiries(fetched);
+        } catch (err) {
+            console.error('Failed to fetch real enquiries', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchEnquiries = async () => {
-            try {
-                const res = await api.get('/enquiries');
-                const fetched = res.data.map(enq => ({
-                    id: enq._id.substring(enq._id.length - 6).toUpperCase(),
-                    studentName: enq.studentName,
-                    grade: enq.grade,
-                    subject: enq.syllabus || 'N/A',
-                    date: enq.createdAt,
-                    status: enq.status,
-                    fullData: enq
-                }));
-                setEnquiries([...MOCK_ENQUIRIES, ...fetched]);
-            } catch (err) {
-                console.error('Failed to fetch real enquiries', err);
-            }
-        };
         fetchEnquiries();
     }, []);
 
@@ -63,7 +64,8 @@ const Enquiries = () => {
                 }
 
                 setEnquiries(prev => prev.map(enq => {
-                    if (enq.id === editId || enq.fullData?._id === editId) {
+                    const dbId = enq.fullData?.id || enq.fullData?._id;
+                    if (enq.id === editId || dbId === editId) {
                         return {
                             ...enq,
                             studentName: formData.studentName,
@@ -91,7 +93,8 @@ const Enquiries = () => {
             console.error("Backend unavailable or stale, using local fallback state", error);
             if (editId) {
                 setEnquiries(prev => prev.map(enq => {
-                    if (enq.id === editId || enq.fullData?._id === editId) {
+                    const dbId = enq.fullData?.id || enq.fullData?._id;
+                    if (enq.id === editId || dbId === editId) {
                         return {
                             ...enq,
                             studentName: formData.studentName,
@@ -118,17 +121,21 @@ const Enquiries = () => {
         }
     };
 
-    const handleDelete = async (id, dbId) => {
-        if (!window.confirm("Are you sure you want to delete this enquiry?")) return;
+    const executeDelete = async () => {
+        if (!deleteModalData) return;
+        const id = deleteModalData.id;
+        const dbId = deleteModalData.fullData?.id || deleteModalData.fullData?._id;
 
         try {
             if (dbId) {
-                await api.delete(`/enquiries/${dbId}`);
+                await api.delete(`/enquiries/${dbId}/`);
             }
             setEnquiries(prev => prev.filter(e => e.id !== id));
         } catch (err) {
             console.error("Backend error, removing locally", err);
             setEnquiries(prev => prev.filter(e => e.id !== id));
+        } finally {
+            setDeleteModalData(null);
         }
     };
 
@@ -180,11 +187,12 @@ const Enquiries = () => {
                 enquiryRef: enquiry.fullData?._id
             };
 
-            if (enquiry.fullData?._id && !enquiry.id.startsWith('ENQ')) {
+            const enquiryDbId = enquiry.fullData?.id || enquiry.fullData?._id;
+            if (enquiryDbId && !enquiry.id.startsWith('ENQ')) {
                 // Post to students module
                 await api.post('/students', studentPayload);
                 // Update enquiry status to completed
-                await api.put(`/enquiries/${enquiry.fullData._id}`, { status: 'Completed', failureReason: '' });
+                await api.put(`/enquiries/${enquiryDbId}/`, { status: 'Completed', failureReason: '' });
             }
 
             // Update local state just in case user goes back
@@ -349,7 +357,7 @@ const Enquiries = () => {
                                             style={{ color: '#8b8e98' }}
                                             onMouseEnter={(e) => e.currentTarget.style.color = '#f87171'}
                                             onMouseLeave={(e) => e.currentTarget.style.color = '#8b8e98'}
-                                            onClick={() => handleDelete(enq.id, enq.fullData?._id)}
+                                            onClick={() => setDeleteModalData(enq)}
                                             title="Delete"
                                         >
                                             <FiTrash2 size={18} />
@@ -374,6 +382,13 @@ const Enquiries = () => {
                 onClose={() => setEnrollmentModalData(null)}
                 enquiry={enrollmentModalData}
                 onComplete={handleCompleteEnrollment}
+            />
+
+            <ConfirmDeleteModal
+                isOpen={!!deleteModalData}
+                onClose={() => setDeleteModalData(null)}
+                onConfirm={executeDelete}
+                itemName={`Enquiry ${deleteModalData?.studentName ? `for ${deleteModalData.studentName}` : ''}`}
             />
         </div>
     );

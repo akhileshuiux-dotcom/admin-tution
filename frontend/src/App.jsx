@@ -8,9 +8,13 @@ import Students from './pages/Students';
 import Tutors from './pages/Tutors';
 import PlanWizard from './pages/PlanWizard';
 import Sessions from './pages/Sessions';
+import Exams from './pages/Exams';
+import LiveExam from './pages/LiveExam';
 import Payments from './pages/Payments';
 import Settings from './pages/Settings';
+import Notifications from './pages/Notifications';
 import { SearchProvider } from './context/SearchContext';
+
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -29,9 +33,13 @@ function App() {
             <Route path="/students" element={<Students />} />
             <Route path="/plans/new" element={<PlanWizard />} />
             <Route path="/schedule" element={<Sessions />} />
+            <Route path="/exams" element={<Exams />} />
+            <Route path="/exams/live/:id" element={<LiveExam />} />
             <Route path="/payments" element={<Payments />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/notifications" element={<Notifications />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
           </Route>
         </Routes>
       </BrowserRouter>

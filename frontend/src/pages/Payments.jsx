@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
     FiDollarSign, FiTrendingUp, FiTrendingDown, FiActivity,
     FiCheckCircle, FiClock, FiPlus, FiDownload, FiEdit2,
@@ -8,7 +8,11 @@ import './Payments.css';
 import { useSearch } from '../context/SearchContext';
 import RecordCashModal from '../components/RecordCashModal';
 import AddExpenseModal from '../components/AddExpenseModal';
+import AddIncomeModal from '../components/AddIncomeModal';
+import AddPayrollModal from '../components/AddPayrollModal';
+import NewTutorModal from '../components/NewTutorModal';
 import { useIncome, useExpenses, usePayroll, useFinancialStats } from '../hooks/useFinance';
+import api from '../api';
 
 // ─── Mock Data ───────────────────────────────────────────────────────────────
 
@@ -151,14 +155,17 @@ const Payments = () => {
     const [activeTab, setActiveTab] = useState('dashboard');
     const { data: income, addIncome, updateIncome, loading: incomeLoading } = useIncome();
     const { data: expenses, addExpense, updateExpense, loading: expenseLoading } = useExpenses();
-    const { data: payroll, updatePayroll, loading: payrollLoading } = usePayroll();
+    const { data: payroll, updatePayroll, addPayroll, loading: payrollLoading } = usePayroll();
     const liveStats = useFinancialStats();
 
     const momData = liveStats.length > 0 ? liveStats : MOM_DATA_FALLBACK;
 
     // Modals
     const [isCashModalOpen, setIsCashModalOpen] = useState(false);
+    const [isAddIncomeModalOpen, setIsAddIncomeModalOpen] = useState(false);
     const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+    const [isPayrollModalOpen, setIsPayrollModalOpen] = useState(false);
+    const [isNewTutorModalOpen, setIsNewTutorModalOpen] = useState(false);
     const [editingIncome, setEditingIncome] = useState(null);
     const [editingExpense, setEditingExpense] = useState(null);
     const [editingPayroll, setEditingPayroll] = useState(null);
@@ -173,14 +180,25 @@ const Payments = () => {
     const [payrollMonth, setPayrollMonth] = useState('');
 
     const { searchQuery } = useSearch();
+    const [tutorList, setTutorList] = useState([]);
+
+    useEffect(() => {
+        const fetchTutors = async () => {
+            try {
+                const res = await api.get('/tutors/');
+                setTutorList(res.data);
+            } catch (err) { console.error(err); }
+        };
+        fetchTutors();
+    }, []);
 
     // ── KPI Calculations ──
-    const totalIncome = useMemo(() => income.filter(i => i.verificationStatus === 'Verified').reduce((s, i) => s + i.amountReceived, 0), [income]);
-    const cashOnHand = useMemo(() => income.filter(i => i.verificationStatus === 'Verified' && i.paymentMode === 'Cash').reduce((s, i) => s + i.amountReceived, 0), [income]);
-    const totalExpenses = useMemo(() => expenses.reduce((s, e) => s + e.amount, 0), [expenses]);
-    const pendingSalaries = useMemo(() => payroll.filter(p => p.paymentStatus === 'Pending').reduce((s, p) => s + p.baseSalary + (p.hourlyRate * p.hoursLogged), 0), [payroll]);
+    const totalIncome = useMemo(() => income.filter(i => i.verificationStatus === 'Verified').reduce((s, i) => s + Number(i.amountReceived || 0), 0), [income]);
+    const cashOnHand = useMemo(() => income.filter(i => i.verificationStatus === 'Verified' && i.paymentMode === 'Cash').reduce((s, i) => s + Number(i.amountReceived || 0), 0), [income]);
+    const totalExpenses = useMemo(() => expenses.reduce((s, e) => s + Number(e.amount || 0), 0), [expenses]);
+    const pendingSalaries = useMemo(() => payroll.filter(p => p.paymentStatus === 'Pending').reduce((s, p) => s + Number(p.baseSalary || 0) + (Number(p.hourlyRate || 0) * Number(p.hoursLogged || 0)), 0), [payroll]);
     const netBalance = totalIncome - totalExpenses;
-    const calcPay = (p) => p.baseSalary + (p.hourlyRate * p.hoursLogged);
+    const calcPay = (p) => Number(p.baseSalary || 0) + (Number(p.hourlyRate || 0) * Number(p.hoursLogged || 0));
 
     // ── Date filter helper ──
     const inDateRange = (dateStr, from, to) => {
@@ -193,15 +211,15 @@ const Payments = () => {
     };
 
     // ── Handlers ──
-    const handleCashSubmit = async (payload) => {
+    const handleIncomeSubmit = async (payload) => {
         try {
             await addIncome({
                 ...payload,
-                verificationStatus: 'Verified',
-                date: new Date().toISOString().split('T')[0]
+                verificationStatus: payload.verificationStatus || 'Verified',
+                date: payload.date || new Date().toISOString().split('T')[0]
             });
         } catch (err) {
-            console.error("Failed to add cash income:", err);
+            console.error("Failed to add income:", err);
         }
     };
 
@@ -261,6 +279,29 @@ const Payments = () => {
         }
     };
 
+    const handlePayrollSubmit = async (payload) => {
+        try {
+            await addPayroll(payload);
+        } catch (err) {
+            console.error("Failed to add payroll:", err);
+        }
+    };
+
+    const handleAddNewTutor = (tutorData) => {
+        // This is a simplified version, usually we'd call an api here
+        // But NewTutorModal expects a submission handler.
+        // In Tutors.jsx it's more complex. For this shortcut, we just record it.
+        api.post('/tutors/', {
+            user: { name: tutorData.name, email: tutorData.email || `${tutorData.name.toLowerCase().replace(' ', '.')}@example.com`, role: 'Tutor', password: 'password123' },
+            contact_number: tutorData.phone || '0000000000',
+            status: 'Active',
+            classes_can_teach: tutorData.subjects,
+            teaching_experience_months: parseInt(tutorData.experience) || 0
+        }).then(res => {
+            setTutorList(prev => [...prev, res.data]);
+        }).catch(err => console.error("Shortcut tutor add failed:", err));
+    };
+
     // ── Filtered data ──
     const filteredIncome = income.filter(i => {
         const q = searchQuery.toLowerCase();
@@ -310,7 +351,7 @@ const Payments = () => {
         { key: 'receiptUrl', label: 'Receipt URL' },
     ];
     const payrollEditFields = [
-        { key: 'tutorName', label: 'Tutor Name' },
+        { key: 'tutorName', label: 'Tutor Name', type: 'select', options: tutorList.map(t => t.name) },
         { key: 'month', label: 'Month (e.g. March 2026)' },
         { key: 'baseSalary', label: 'Base Salary ($)', type: 'number' },
         { key: 'hourlyRate', label: 'Hourly Rate ($/hr)', type: 'number' },
@@ -382,6 +423,9 @@ const Payments = () => {
                                     <div style={{ fontSize: '0.78rem', color: '#92400e', fontWeight: 600, marginBottom: '4px' }}>⚠ Pending Verification</div>
                                     <div style={{ fontSize: '0.85rem', color: '#b45309' }}>${income.filter(i => i.verificationStatus === 'Pending').reduce((s, i) => s + i.amountReceived, 0).toLocaleString()} awaiting review</div>
                                 </div>
+                                <button className="fin-cash-action" onClick={() => setIsCashModalOpen(true)} style={{ marginTop: '16px', width: '100%' }}>
+                                    <FiPocket size={18} /> Record Cash Deal
+                                </button>
                             </div>
                         </div>
 
@@ -430,8 +474,13 @@ const Payments = () => {
                             onFromChange={setIncomeDateFrom} onToChange={setIncomeDateTo}
                             onClear={() => { setIncomeDateFrom(''); setIncomeDateTo(''); }}
                         />
-                        <div style={{ marginLeft: 'auto', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '8px 16px', fontSize: '0.85rem', color: '#166534', fontWeight: 600 }}>
-                            Verified: <strong>${filteredIncome.filter(i => i.verificationStatus === 'Verified').reduce((s, i) => s + i.amountReceived, 0).toLocaleString()}</strong>
+                        <div style={{ marginLeft: 'auto', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '8px 16px', fontSize: '0.85rem', color: '#166534', fontWeight: 600 }}>
+                                Verified: <strong>${filteredIncome.filter(i => i.verificationStatus === 'Verified').reduce((s, i) => s + Number(i.amountReceived || 0), 0).toLocaleString()}</strong>
+                            </div>
+                            <button className="btn btn-primary" style={{ background: 'linear-gradient(135deg,#3b82f6,#2563eb)', borderColor: '#3b82f6', display: 'flex', alignItems: 'center', gap: '8px' }} onClick={() => setIsAddIncomeModalOpen(true)}>
+                                <FiPlus size={15} /> Log Income
+                            </button>
                         </div>
                     </div>
 
@@ -455,13 +504,13 @@ const Payments = () => {
                                             <td className="text-muted">{i.date}</td>
                                             <td><span className={`status-badge ${i.verificationStatus === 'Verified' ? 'status-badge-converted' : i.verificationStatus === 'Rejected' ? 'status-badge-closed-red' : 'status-badge-draft'}`}>{i.verificationStatus}</span></td>
                                             <td>
-                                                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                                    <button className="fin-edit-btn" onClick={() => setEditingIncome(i)} title="Edit">
-                                                        <FiEdit2 size={13} />
+                                                <div className="fin-actions-wrapper">
+                                                    <button className="fin-action-btn fin-action-edit" onClick={() => setEditingIncome(i)} title="Edit Record">
+                                                        <FiEdit2 size={14} />
                                                     </button>
                                                     {i.verificationStatus === 'Pending' && (
-                                                        <button className="btn btn-primary btn-sm" style={{ backgroundColor: '#10b981', borderColor: '#10b981', fontSize: '0.75rem', padding: '4px 10px' }} onClick={() => handleVerifyIncome(i.id)}>
-                                                            <FiCheckCircle size={11} /> Verify
+                                                        <button className="fin-action-verify-filled" onClick={() => handleVerifyIncome(i.id)}>
+                                                            <FiCheckCircle size={12} /> Verify
                                                         </button>
                                                     )}
                                                 </div>
@@ -492,7 +541,7 @@ const Payments = () => {
                         />
                         <div style={{ marginLeft: 'auto', display: 'flex', gap: '10px', alignItems: 'center' }}>
                             <div style={{ background: '#fff5f5', border: '1px solid #fecaca', borderRadius: '10px', padding: '8px 16px', fontSize: '0.85rem', color: '#991b1b', fontWeight: 600 }}>
-                                Total: <strong>${filteredExpenses.reduce((s, e) => s + e.amount, 0).toLocaleString()}</strong>
+                                Total: <strong>${filteredExpenses.reduce((s, e) => s + Number(e.amount || 0), 0).toLocaleString()}</strong>
                             </div>
                             <button className="btn btn-primary" style={{ background: 'linear-gradient(135deg,#ef4444,#dc2626)', borderColor: '#ef4444', display: 'flex', alignItems: 'center', gap: '8px' }} onClick={() => setIsExpenseModalOpen(true)}>
                                 <FiPlus size={15} /> Log Expense
@@ -528,9 +577,11 @@ const Payments = () => {
                                             <td className="text-muted">{e.paymentDate}</td>
                                             <td>{e.receiptUrl ? <a href={e.receiptUrl} target="_blank" rel="noreferrer" style={{ color: '#3b82f6', display: 'flex', alignItems: 'center', gap: '4px' }}><FiLink size={14} /> View</a> : <span className="text-muted">—</span>}</td>
                                             <td>
-                                                <button className="fin-edit-btn" onClick={() => setEditingExpense(e)} title="Edit">
-                                                    <FiEdit2 size={13} />
-                                                </button>
+                                                <div className="fin-actions-wrapper">
+                                                    <button className="fin-action-btn fin-action-edit" onClick={() => setEditingExpense(e)} title="Edit Expense">
+                                                        <FiEdit2 size={14} />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -557,7 +608,7 @@ const Payments = () => {
                                 Pending: <strong>${pendingSalaries.toLocaleString()}</strong>
                             </div>
                             <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '8px 16px', fontSize: '0.85rem', color: '#166534', fontWeight: 600 }}>
-                                Paid This Month: <strong>${payroll.filter(p => p.paymentStatus === 'Paid' && p.month === 'February 2026').reduce((s, p) => s + calcPay(p), 0).toLocaleString()}</strong>
+                                Paid This Month: <strong>${payroll.filter(p => p.paymentStatus === 'Paid' && p.month === 'February 2026').reduce((s, p) => s + Number(calcPay(p)), 0).toLocaleString()}</strong>
                             </div>
                             {/* Month selector */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '10px', padding: '6px 12px' }}>
@@ -575,6 +626,9 @@ const Payments = () => {
                                 </select>
                             </div>
                         </div>
+                        <button className="btn btn-primary" style={{ background: 'linear-gradient(135deg,#8b5cf6,#6d28d9)', borderColor: '#8b5cf6', display: 'flex', alignItems: 'center', gap: '8px' }} onClick={() => setIsPayrollModalOpen(true)}>
+                            <FiPlus size={15} /> Log Payroll
+                        </button>
                     </div>
 
                     <div className="glass-panel table-container">
@@ -618,18 +672,18 @@ const Payments = () => {
                                                 </td>
                                                 <td><span className={`status-badge ${p.paymentStatus === 'Paid' ? 'status-badge-converted' : 'status-badge-draft'}`}>{p.paymentStatus}</span></td>
                                                 <td>
-                                                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                                    <div className="fin-actions-wrapper">
                                                         {p.paymentStatus === 'Pending' && (
-                                                            <button className="fin-edit-btn" onClick={() => setEditingPayroll(p)} title="Edit">
-                                                                <FiEdit2 size={13} />
+                                                            <button className="fin-action-btn fin-action-edit" onClick={() => setEditingPayroll(p)} title="Edit Entry">
+                                                                <FiEdit2 size={14} />
                                                             </button>
                                                         )}
                                                         {p.paymentStatus === 'Pending' ? (
-                                                            <button className="btn btn-primary btn-sm" style={{ background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)', borderColor: '#8b5cf6', fontSize: '0.75rem', whiteSpace: 'nowrap', padding: '4px 10px' }} onClick={() => handleMarkPaid(p.id)}>
-                                                                <FiCheckCircle size={11} /> Mark as Paid
+                                                            <button className="fin-action-paid-filled" onClick={() => handleMarkPaid(p.id)}>
+                                                                <FiCheckCircle size={12} /> Mark as Paid
                                                             </button>
                                                         ) : (
-                                                            <span style={{ color: '#10b981', fontSize: '0.8rem', fontWeight: 600 }}>✓ Paid</span>
+                                                            <span style={{ color: '#10b981', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}><FiCheckCircle size={14} /> Paid</span>
                                                         )}
                                                     </div>
                                                 </td>
@@ -644,14 +698,22 @@ const Payments = () => {
                 </div>
             )}
 
-            {/* ── FAB: Cash Deal ────────────────────────────────── */}
-            <button className="fin-fab animate-fade-in" onClick={() => setIsCashModalOpen(true)} title="Record Cash Payment">
-                <FiPocket size={22} /><span>Cash Deal</span>
-            </button>
 
             {/* Modals */}
-            <RecordCashModal isOpen={isCashModalOpen} onClose={() => setIsCashModalOpen(false)} onSubmit={handleCashSubmit} />
+            <AddIncomeModal isOpen={isAddIncomeModalOpen} onClose={() => setIsAddIncomeModalOpen(false)} onSubmit={handleIncomeSubmit} />
+            <RecordCashModal isOpen={isCashModalOpen} onClose={() => setIsCashModalOpen(false)} onSubmit={handleIncomeSubmit} />
             <AddExpenseModal isOpen={isExpenseModalOpen} onClose={() => setIsExpenseModalOpen(false)} onSubmit={handleExpenseSubmit} />
+            <AddPayrollModal
+                isOpen={isPayrollModalOpen}
+                onClose={() => setIsPayrollModalOpen(false)}
+                onSubmit={handlePayrollSubmit}
+                onAddNewTutor={() => setIsNewTutorModalOpen(true)}
+            />
+            <NewTutorModal
+                isOpen={isNewTutorModalOpen}
+                onClose={() => setIsNewTutorModalOpen(false)}
+                onSubmit={handleAddNewTutor}
+            />
 
             {/* Inline Edit Modals */}
             {editingIncome && (

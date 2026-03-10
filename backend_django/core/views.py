@@ -3,11 +3,11 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from django.utils import timezone
-from .models import Student, Tutor, Plan, Session, Payment, Income, Expense, TutorPayroll
+from .models import Student, Tutor, Plan, Session, Payment, Income, Expense, TutorPayroll, ExamSchedule, ExamQuestion
 from .serializers import (
     StudentSerializer, TutorSerializer, PlanSerializer,
     SessionSerializer, PaymentSerializer,
-    IncomeSerializer, ExpenseSerializer, TutorPayrollSerializer
+    IncomeSerializer, ExpenseSerializer, TutorPayrollSerializer, ExamScheduleSerializer, ExamQuestionSerializer
 )
 
 class StudentViewSet(viewsets.ModelViewSet):
@@ -204,3 +204,115 @@ class TutorPayrollViewSet(viewsets.ModelViewSet):
             'expense': ExpenseSerializer(expense).data,
             'message': f'Salary of {calculated} paid and logged to expenses.'
         })
+
+class ExamScheduleViewSet(viewsets.ModelViewSet):
+    queryset = ExamSchedule.objects.all().order_by('-date')
+    serializer_class = ExamScheduleSerializer
+    permission_classes = [AllowAny]
+
+    @action(detail=False, methods=['get'], url_path='check-conflicts')
+    def check_conflicts(self, request):
+        """GET /api/exams/check-conflicts?date=YYYY-MM-DD&time=HH:MM&studentId=ID"""
+        date_str = request.query_params.get('date')
+        time_str = request.query_params.get('time')
+        student_id = request.query_params.get('studentId')
+
+        if not all([date_str, time_str, student_id]):
+            return Response({'error': 'Missing parameters'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check for overlapping regular sessions
+        conflicts = Session.objects.filter(
+            scheduled_date=date_str,
+            scheduled_time=time_str,
+            student_refs__id=student_id,
+            status='Scheduled'
+        )
+
+        if conflicts.exists():
+            return Response({
+                'hasConflict': True,
+                'conflictType': 'Session Overlap',
+                'message': f"Student has a regular session scheduled at {time_str} on {date_str}."
+            })
+
+        return Response({'hasConflict': False})
+
+    @action(detail=True, methods=['post'], url_path='add-questions')
+    def add_questions(self, request, pk=None):
+        try:
+            exam = self.get_object()
+            questions_data = request.data.get('questions', [])
+            
+            # Clear existing questions for this exam to ensure builder state is sync
+            exam.questions.all().delete()
+            
+            created_questions = []
+            for q_data in questions_data:
+                # Remove frontend-generated temp ID
+                if 'id' in q_data:
+                    del q_data['id']
+                
+                q_data['exam'] = exam.id
+                serializer = ExamQuestionSerializer(data=q_data)
+                if serializer.is_valid():
+                    serializer.save()
+                    created_questions.append(serializer.data)
+                else:
+                    return Response(serializer.errors, status=400)
+            
+            # Update mixed_mode flag
+            q_types = set([q['question_type'] for q in created_questions])
+            exam.mixed_mode = len(q_types) > 1
+            exam.save()
+            
+            return Response({'status': 'Questions updated', 'questions': created_questions})
+        except Exception as e:
+            print(f"Error in add_questions: {str(e)}")
+            return Response({'error': str(e)}, status=500)
+
+    @action(detail=True, methods=['post'], url_path='submit-exam')
+    def submit_exam(self, request, pk=None):
+        try:
+            exam = self.get_object()
+            answers = request.data.get('answers', {})
+            
+            total_score = 0
+            all_evaluated = True
+            
+            for q in exam.questions.all():
+                answer = answers.get(str(q.id))
+                if q.question_type in ['MCQ', 'YES_NO']:
+                    correct_answer = q.payload.get('correct_answer')
+                    if str(answer) == str(correct_answer):
+                        total_score += q.marks
+                else:
+                    all_evaluated = False
+            
+            exam.marks_obtained = total_score
+            exam.status = 'Evaluated' if all_evaluated else 'Completed'
+            exam.save()
+            
+            return Response({
+                'score': total_score,
+                'status': exam.status,
+                'fully_evaluated': all_evaluated
+            })
+        except Exception as e:
+            print(f"Error in submit_exam: {str(e)}")
+            return Response({'error': str(e)}, status=500)
+
+    @action(detail=True, methods=['patch'], url_path='record-result')
+    def record_result(self, request, pk=None):
+        """PATCH /api/exams/:id/record-result"""
+        instance = self.get_object()
+        marks_obtained = request.data.get('marksObtained')
+        total_marks = request.data.get('totalMarks')
+        feedback = request.data.get('feedback')
+
+        instance.marks_obtained = marks_obtained
+        instance.total_marks = total_marks
+        instance.feedback = feedback
+        instance.status = 'Evaluated'
+        instance.save()
+
+        return Response(ExamScheduleSerializer(instance).data)

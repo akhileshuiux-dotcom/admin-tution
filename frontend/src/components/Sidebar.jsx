@@ -31,6 +31,7 @@ const Sidebar = () => {
         { path: '/students', label: 'Students', icon: <FiUsers /> },
         { path: '/tutors', label: 'Tutors', icon: <FiFileText /> },
         { path: '/schedule', label: 'Schedule', icon: <FiCalendar /> },
+        { path: '/exams', label: 'Exams', icon: <FiCalendar /> },
         { path: '/payments', label: 'Payments', icon: <FiDollarSign /> },
     ];
 

@@ -2,9 +2,29 @@ from rest_framework import serializers
 from .models import Enquiry, DemoRequest, FollowUp
 
 class DemoRequestSerializer(serializers.ModelSerializer):
+    studentName = serializers.CharField(source='enquiry.student_name', read_only=True)
+    grade = serializers.CharField(source='enquiry.grade', read_only=True)
+
     class Meta:
         model = DemoRequest
-        fields = '__all__'
+        fields = [
+            'id', 'enquiry', 'subject', 'topic', 'preferred_date', 
+            'preferred_time', 'status', 'final_tutor', 'studentName', 'grade'
+        ]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # Map date/time to what the frontend expects for the activity-time display
+        return {
+            'id': data.get('id'),
+            'studentName': data.get('studentName'),
+            'grade': data.get('grade'),
+            'subject': data.get('subject'),
+            'date': data.get('preferred_date'),
+            'time': data.get('preferred_time'),
+            'topic': data.get('topic'),
+            'status': data.get('status')
+        }
 
 class FollowUpSerializer(serializers.ModelSerializer):
     class Meta:
