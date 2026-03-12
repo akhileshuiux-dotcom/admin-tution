@@ -204,44 +204,38 @@ const Exams = () => {
                                 </div>
 
                                 <div className="exam-footer">
-                                    {(exam.status === 'Scheduled' || exam.status === 'Ongoing') && (
-                                        <button
-                                            className="btn btn-primary btn-sm btn-start"
-                                            onClick={() => navigate(`/exams/live/${exam.id}`)}
-                                        >
-                                            <FiPlay /> Start
-                                        </button>
-                                    )}
                                     <div className="proctor-info">
                                         <div className="avatar-xs">
                                             {exam.tutorRef ? 'T' : 'N'}
                                         </div>
                                         <span className="text-muted">Proctor Assigned</span>
                                     </div>
-                                    <button
-                                        className="btn btn-secondary btn-sm"
-                                        onClick={() => {
-                                            setActiveExamForBuilder(exam);
-                                            setIsBuilderOpen(true);
-                                        }}
-                                    >
-                                        <FiBook /> Paper
-                                    </button>
-                                    <button
-                                        className="btn btn-primary btn-sm"
-                                        onClick={() => {
-                                            setSelectedExam(exam);
-                                            if (exam.status === 'Evaluated') {
-                                                setResultData({
-                                                    marksObtained: exam.marksObtained,
-                                                    totalMarks: exam.totalMarks,
-                                                    feedback: exam.feedback
-                                                });
-                                            }
-                                        }}
-                                    >
-                                        <FiEdit3 /> {exam.status === 'Evaluated' ? 'View Result' : 'Update'}
-                                    </button>
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                        <button
+                                            className="btn btn-secondary btn-sm"
+                                            onClick={() => {
+                                                setActiveExamForBuilder(exam);
+                                                setIsBuilderOpen(true);
+                                            }}
+                                        >
+                                            <FiBook /> Paper
+                                        </button>
+                                        <button
+                                            className="btn btn-primary btn-sm"
+                                            onClick={() => {
+                                                setSelectedExam(exam);
+                                                if (exam.status === 'Evaluated') {
+                                                    setResultData({
+                                                        marksObtained: exam.marksObtained,
+                                                        totalMarks: exam.totalMarks,
+                                                        feedback: exam.feedback
+                                                    });
+                                                }
+                                            }}
+                                        >
+                                            <FiEdit3 /> {exam.status === 'Evaluated' ? 'View Result' : 'Update'}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         ))

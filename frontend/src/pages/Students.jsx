@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { FiUserPlus, FiFilter, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { FiUserPlus, FiFilter, FiEdit2, FiTrash2, FiCheckSquare, FiCheckCircle } from 'react-icons/fi';
 import './Enquiries.css';
 import StudentModal from '../components/StudentModal';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
+import AttendanceModal from '../components/AttendanceModal';
+import BulkAttendanceModal from '../components/BulkAttendanceModal';
 import api from '../api';
 import { useSearch } from '../context/SearchContext';
 
@@ -13,8 +15,13 @@ const Students = () => {
     const [editingStudent, setEditingStudent] = useState(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [studentToDelete, setStudentToDelete] = useState(null);
+    const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
+    const [studentForAttendance, setStudentForAttendance] = useState(null);
+    const [isBulkAttendanceModalOpen, setIsBulkAttendanceModalOpen] = useState(false);
+    const [selectedStudentIds, setSelectedStudentIds] = useState([]);
     const [showFilters, setShowFilters] = useState(false);
     const [filters, setFilters] = useState({ name: '', grade: '', status: '' });
+    const [activeTab, setActiveTab] = useState('Active');
     const { searchQuery } = useSearch();
 
     const fetchStudents = async () => {
@@ -23,12 +30,12 @@ const Students = () => {
             const res = await api.get('/students/');
             const fetched = res.data.map(stu => ({
                 id: 'STU' + (stu.id || stu._id).toString().substring((stu.id || stu._id).toString().length - 4).toUpperCase(),
-                name: stu.fullName,
+                name: stu.full_name || stu.fullName,
                 grade: stu.grade,
                 subject: stu.syllabus || 'N/A',
-                enrolledDate: stu.createdAt,
+                enrolledDate: stu.created_at || stu.createdAt,
                 status: stu.status || 'Active',
-                tutor: stu.tutorName || 'Unassigned',
+                tutor: stu.tutorName || stu.tutor || 'Unassigned',
                 fullData: stu
             }));
             setStudents(fetched);
@@ -46,7 +53,7 @@ const Students = () => {
     const getStatusClass = (status) => {
         switch (status) {
             case 'Active': return 'status-badge-open';
-            case 'Graduated': return 'status-badge-converted';
+            case 'Graduate': return 'status-badge-converted';
             case 'Inactive': return 'status-badge-closed-red';
             default: return 'status-badge-draft';
         }
@@ -61,11 +68,27 @@ const Students = () => {
             student.tutor?.toLowerCase().includes(q) ||
             student.id?.toLowerCase().includes(q);
 
-        return matchesGlobalSearch &&
+        const matchesTab = activeTab === 'All' ? true : student.status === activeTab;
+
+        return matchesGlobalSearch && matchesTab &&
             (filters.name === '' || student.name.toLowerCase().includes(filters.name.toLowerCase())) &&
             (filters.grade === '' || (student.grade && student.grade.toLowerCase().includes(filters.grade.toLowerCase()))) &&
             (filters.status === '' || student.status === filters.status);
     });
+
+    const handleSelectAll = (e) => {
+        if (e.target.checked) {
+            setSelectedStudentIds(filteredStudents.map(s => s.id));
+        } else {
+            setSelectedStudentIds([]);
+        }
+    };
+
+    const handleSelectStudent = (id) => {
+        setSelectedStudentIds(prev => 
+            prev.includes(id) ? prev.filter(sId => sId !== id) : [...prev, id]
+        );
+    };
 
     const handleSaveStudent = async (formData, editId) => {
         const payload = {
@@ -125,12 +148,49 @@ const Students = () => {
                 await api.delete(`/students/${studentToDelete.fullData._id}`);
             }
             setStudents(prev => prev.filter(s => s.id !== studentToDelete.id));
+            setSelectedStudentIds(prev => prev.filter(id => id !== studentToDelete.id));
         } catch (err) {
             console.error("Backend error, removing locally", err);
             setStudents(prev => prev.filter(s => s.id !== studentToDelete.id));
+            setSelectedStudentIds(prev => prev.filter(id => id !== studentToDelete.id));
         } finally {
             setIsDeleteModalOpen(false);
             setStudentToDelete(null);
+        }
+    };
+
+    const handleSaveAttendance = async (attendanceData, student) => {
+        try {
+            console.log("Saving attendance for", student.name, attendanceData);
+            setStudents(prev => prev.map(s => {
+                if (s.id === student.id) {
+                    return { ...s, todayAttendance: attendanceData.status };
+                }
+                return s;
+            }));
+            setIsAttendanceModalOpen(false);
+            setStudentForAttendance(null);
+        } catch (error) {
+            console.error("Failed to save attendance:", error);
+            alert("Error saving attendance.");
+        }
+    };
+
+    const handleSaveBulkAttendance = async (attendanceData, selectedStudentsList) => {
+        try {
+            console.log(`Saving bulk attendance for ${selectedStudentsList.length} students`, attendanceData);
+            const selectedIds = selectedStudentsList.map(s => s.id);
+            setStudents(prev => prev.map(s => {
+                if (selectedIds.includes(s.id)) {
+                    return { ...s, todayAttendance: attendanceData.status };
+                }
+                return s;
+            }));
+            setIsBulkAttendanceModalOpen(false);
+            setSelectedStudentIds([]); // clear selection after action
+        } catch (error) {
+            console.error("Failed to save bulk attendance:", error);
+            alert("Error saving bulk attendance.");
         }
     };
 
@@ -161,10 +221,49 @@ const Students = () => {
                     <select className="form-input" value={filters.status} onChange={e => setFilters({ ...filters, status: e.target.value })} style={{ flex: 1, minWidth: '150px' }}>
                         <option value="">All Statuses</option>
                         <option value="Active">Active</option>
+                        <option value="Graduate">Graduate</option>
                         <option value="Inactive">Inactive</option>
-                        <option value="Graduated">Graduated</option>
                     </select>
                     <button className="btn btn-secondary" onClick={() => setFilters({ name: '', grade: '', status: '' })}>Clear</button>
+                </div>
+            )}
+
+            <div className="filter-tabs" style={{ marginBottom: '1rem' }}>
+                <button 
+                    className={`filter-tab ${activeTab === 'Active' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('Active')}
+                >
+                    Active
+                </button>
+                <button 
+                    className={`filter-tab ${activeTab === 'Inactive' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('Inactive')}
+                >
+                    Inactive
+                </button>
+                <button 
+                    className={`filter-tab ${activeTab === 'Graduate' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('Graduate')}
+                >
+                    Graduate
+                </button>
+            </div>
+
+            {selectedStudentIds.length > 0 && (
+                <div className="glass-panel animate-fade-in" style={{ marginBottom: '1.5rem', padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(37, 99, 235, 0.05)', border: '1px solid rgba(37, 99, 235, 0.2)' }}>
+                    <div style={{ fontWeight: '600', color: 'var(--primary-color)' }}>
+                        {selectedStudentIds.length} Student{selectedStudentIds.length > 1 ? 's' : ''} Selected
+                    </div>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                        <button 
+                            className="btn btn-primary" 
+                            style={{ backgroundColor: '#10b981', borderColor: '#10b981' }}
+                            onClick={() => setIsBulkAttendanceModalOpen(true)}
+                        >
+                            <FiCheckCircle /> Mark Attendance
+                        </button>
+                        <button className="btn btn-secondary" onClick={() => setSelectedStudentIds([])}>Cancel</button>
+                    </div>
                 </div>
             )}
 
@@ -172,25 +271,65 @@ const Students = () => {
                 <table className="data-table">
                     <thead>
                         <tr>
+                            {activeTab === 'Active' && (
+                                <th style={{ width: '40px' }}>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={filteredStudents.length > 0 && selectedStudentIds.length === filteredStudents.length}
+                                        onChange={handleSelectAll}
+                                        style={{ cursor: 'pointer' }}
+                                    />
+                                </th>
+                            )}
                             <th>ID</th>
                             <th>Student Name</th>
                             <th>Grade</th>
                             <th>Subject(s)</th>
                             <th>Enrolled Date</th>
                             <th>Assigned Tutor</th>
+                            {activeTab === 'Active' && <th>Attendance</th>}
                             <th>Status</th>
                             <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         {filteredStudents.map((student) => (
-                            <tr key={student.id}>
+                            <tr key={student.id} style={{ backgroundColor: selectedStudentIds.includes(student.id) ? 'rgba(37, 99, 235, 0.05)' : 'transparent' }}>
+                                {activeTab === 'Active' && (
+                                    <td>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={selectedStudentIds.includes(student.id)}
+                                            onChange={() => handleSelectStudent(student.id)}
+                                            style={{ cursor: 'pointer' }}
+                                        />
+                                    </td>
+                                )}
                                 <td className="font-medium text-muted">{student.id}</td>
                                 <td className="font-semibold">{student.name}</td>
                                 <td>{student.grade}</td>
                                 <td>{student.subject}</td>
                                 <td>{new Date(student.enrolledDate).toLocaleDateString()}</td>
                                 <td>{student.tutor}</td>
+                                {activeTab === 'Active' && (
+                                    <td>
+                                        {student.todayAttendance ? (
+                                            <span style={{ 
+                                                display: 'inline-block',
+                                                padding: '2px 8px', 
+                                                borderRadius: '4px',
+                                                fontSize: '0.75rem',
+                                                fontWeight: '500',
+                                                backgroundColor: student.todayAttendance === 'Present' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                                color: student.todayAttendance === 'Present' ? '#10b981' : '#ef4444'
+                                            }}>
+                                                {student.todayAttendance}
+                                            </span>
+                                        ) : (
+                                            <span className="text-muted" style={{ fontSize: '0.85rem' }}>-</span>
+                                        )}
+                                    </td>
+                                )}
                                 <td>
                                     <span className={`status-badge ${getStatusClass(student.status)}`}>
                                         {student.status}
@@ -198,6 +337,21 @@ const Students = () => {
                                 </td>
                                 <td>
                                     <div className="flex gap-2" style={{ display: 'flex', gap: '0.5rem' }}>
+                                        {student.status === 'Active' && (
+                                            <button
+                                                className="icon-btn text-muted transition-colors"
+                                                style={{ color: '#8b8e98' }}
+                                                onMouseEnter={(e) => e.currentTarget.style.color = '#3b82f6'}
+                                                onMouseLeave={(e) => e.currentTarget.style.color = '#8b8e98'}
+                                                onClick={() => {
+                                                    setStudentForAttendance(student);
+                                                    setIsAttendanceModalOpen(true);
+                                                }}
+                                                title="Mark Attendance"
+                                            >
+                                                <FiCheckSquare size={18} />
+                                            </button>
+                                        )}
                                         <button
                                             className="icon-btn text-muted transition-colors"
                                             style={{ color: '#8b8e98' }}
@@ -247,6 +401,23 @@ const Students = () => {
                 }}
                 onConfirm={confirmDelete}
                 itemName={studentToDelete?.name}
+            />
+
+            <AttendanceModal
+                isOpen={isAttendanceModalOpen}
+                onClose={() => {
+                    setIsAttendanceModalOpen(false);
+                    setStudentForAttendance(null);
+                }}
+                student={studentForAttendance}
+                onSave={handleSaveAttendance}
+            />
+
+            <BulkAttendanceModal
+                isOpen={isBulkAttendanceModalOpen}
+                onClose={() => setIsBulkAttendanceModalOpen(false)}
+                selectedStudents={students.filter(s => selectedStudentIds.includes(s.id))}
+                onSave={handleSaveBulkAttendance}
             />
         </div>
     );

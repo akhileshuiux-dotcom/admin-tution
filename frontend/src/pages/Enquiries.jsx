@@ -174,23 +174,23 @@ const Enquiries = () => {
     const handleCompleteEnrollment = async (formData, enquiry) => {
         try {
             const studentPayload = {
-                fullName: formData.studentName,
+                full_name: formData.studentName,
                 grade: formData.grade,
                 location: enquiry.fullData?.location || 'Unknown',
                 country: enquiry.fullData?.country || 'Unknown',
-                phoneNumber: formData.phoneNumber,
+                phone_number: formData.phoneNumber,
                 email: formData.email,
                 syllabus: formData.subject,
                 status: 'Active',
-                parentName: formData.parentName,
+                parent_name: formData.parentName,
                 tutor: formData.tutor,
-                enquiryRef: enquiry.fullData?._id
+                enquiry_ref: enquiry.fullData?._id
             };
 
             const enquiryDbId = enquiry.fullData?.id || enquiry.fullData?._id;
             if (enquiryDbId && !enquiry.id.startsWith('ENQ')) {
                 // Post to students module
-                await api.post('/students', studentPayload);
+                await api.post('/students/', studentPayload);
                 // Update enquiry status to completed
                 await api.put(`/enquiries/${enquiryDbId}/`, { status: 'Completed', failureReason: '' });
             }

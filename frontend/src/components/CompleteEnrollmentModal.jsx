@@ -39,9 +39,13 @@ const CompleteEnrollmentModal = ({ isOpen, onClose, enquiry, onComplete }) => {
                 { _id: '4', fullName: 'Michael Chen' }
             ];
             try {
-                const res = await api.get('/tutors');
+                const res = await api.get('/tutors/');
                 if (res.data && res.data.length > 0) {
-                    setTutors(res.data);
+                    const formattedTutors = res.data.map(t => ({
+                        _id: t.id || t._id,
+                        fullName: t.name || t.fullName
+                    }));
+                    setTutors(formattedTutors);
                 } else {
                     setTutors(mockTutors);
                 }
