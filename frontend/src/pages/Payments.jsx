@@ -125,7 +125,6 @@ const MoMChart = ({ data }) => {
 
 const DateFilterBar = ({ dateFrom, dateTo, onFromChange, onToChange, onClear }) => (
     <div className="date-filter-bar">
-        <FiCalendar size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
         <input
             type="date"
             className="form-input date-filter-input"
@@ -141,11 +140,6 @@ const DateFilterBar = ({ dateFrom, dateTo, onFromChange, onToChange, onClear }) 
             onChange={e => onToChange(e.target.value)}
             title="To date"
         />
-        {(dateFrom || dateTo) && (
-            <button onClick={onClear} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center', fontSize: '14px' }} title="Clear date filter">
-                <FiX size={14} />
-            </button>
-        )}
     </div>
 );
 
@@ -441,7 +435,7 @@ const Payments = () => {
                                             <td>{i.planType}</td>
                                             <td className="font-bold" style={{ color: '#10b981' }}>${i.amountReceived.toLocaleString()}</td>
                                             <td><span style={{ background: `${MODE_COLORS[i.paymentMode] || '#94a3b8'}18`, color: MODE_COLORS[i.paymentMode] || '#94a3b8', padding: '2px 10px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 600 }}>{i.paymentMode}</span></td>
-                                            <td className="text-muted">{i.date}</td>
+                                            <td className="text-muted">{i.date || i.createdAt?.split('T')[0]}</td>
                                             <td><span className={`status-badge ${i.verificationStatus === 'Verified' ? 'status-badge-converted' : 'status-badge-draft'}`}>{i.verificationStatus}</span></td>
                                         </tr>
                                     ))}
@@ -501,7 +495,7 @@ const Payments = () => {
                                             <td>{i.planType}</td>
                                             <td className="font-bold" style={{ color: '#10b981' }}>${i.amountReceived.toLocaleString()}</td>
                                             <td><span style={{ background: `${MODE_COLORS[i.paymentMode] || '#94a3b8'}18`, color: MODE_COLORS[i.paymentMode] || '#94a3b8', padding: '3px 10px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 600 }}>{i.paymentMode}</span></td>
-                                            <td className="text-muted">{i.date}</td>
+                                            <td className="text-muted">{i.date || i.createdAt?.split('T')[0]}</td>
                                             <td><span className={`status-badge ${i.verificationStatus === 'Verified' ? 'status-badge-converted' : i.verificationStatus === 'Rejected' ? 'status-badge-closed-red' : 'status-badge-draft'}`}>{i.verificationStatus}</span></td>
                                             <td>
                                                 <div className="fin-actions-wrapper">
@@ -574,7 +568,7 @@ const Payments = () => {
                                             <td><span style={{ background: `${CATEGORY_COLORS[e.category] || '#94a3b8'}18`, color: CATEGORY_COLORS[e.category] || '#94a3b8', padding: '3px 10px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 600 }}>{e.category}</span></td>
                                             <td className="font-semibold">{e.payeeName}</td>
                                             <td className="font-bold" style={{ color: '#ef4444' }}>${e.amount.toLocaleString()}</td>
-                                            <td className="text-muted">{e.paymentDate}</td>
+                                            <td className="text-muted">{e.paymentDate || e.createdAt?.split('T')[0]}</td>
                                             <td>{e.receiptUrl ? <a href={e.receiptUrl} target="_blank" rel="noreferrer" style={{ color: '#3b82f6', display: 'flex', alignItems: 'center', gap: '4px' }}><FiLink size={14} /> View</a> : <span className="text-muted">—</span>}</td>
                                             <td>
                                                 <div className="fin-actions-wrapper">

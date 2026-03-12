@@ -113,8 +113,8 @@ const Sessions = () => {
         setNewSessionForm({
             ...newSessionForm,
             studentId: studentId,
-            studentName: student.name,
-            grade: student.grade || 'N/A'
+            studentName: student?.fullName || student?.name || 'Unknown',
+            grade: student?.grade || 'N/A'
         });
     };
 
@@ -129,10 +129,10 @@ const Sessions = () => {
         }
 
         const payload = {
-            student_id: newSessionForm.studentId,
-            tutor_id: newSessionForm.tutor, // This should be the ID
+            studentId: newSessionForm.studentId,
+            tutor: newSessionForm.tutor,
             date: newSessionForm.date,
-            start_time: newSessionForm.time,
+            time: newSessionForm.time,
             topic: newSessionForm.topic,
             subject: newSessionForm.topic ? newSessionForm.topic.split(' - ')[0] : 'General',
             status: 'Scheduled',
@@ -542,7 +542,7 @@ const Sessions = () => {
                                         >
                                             <option value="">Select a student...</option>
                                             {studentsList.map(student => (
-                                                <option key={student.id} value={student.id}>{student.name}</option>
+                                                <option key={student.id || student._id} value={student.id || student._id}>{student.fullName || student.name}</option>
                                             ))}
                                         </select>
                                     </div>
@@ -614,6 +614,49 @@ const Sessions = () => {
                                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
                                         <button className="btn btn-secondary" style={{ backgroundColor: 'white', color: '#334155', border: '1px solid #e2e8f0' }} onClick={() => setActiveAction(null)}>Cancel</button>
                                         <button className="btn btn-primary" style={{ backgroundColor: '#3b82f6', color: 'white', border: 'none' }} onClick={handleSaveSession}>Save Session</button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Session Listing / History in Modal */}
+                            {activeAction.type === 'add_session' && newSessionForm.studentId && (
+                                <div style={{ marginTop: '24px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
+                                    <h4 style={{ margin: '0 0 12px 0', fontSize: '0.9rem', fontWeight: '700', color: '#475569' }}>
+                                        Recent Sessions for {newSessionForm.studentName}
+                                    </h4>
+                                    <div style={{ maxHeight: '180px', overflowY: 'auto', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                                        <table style={{ width: '100%', fontSize: '0.8rem', borderCollapse: 'collapse' }}>
+                                            <thead style={{ background: '#f8fafc', position: 'sticky', top: 0 }}>
+                                                <tr>
+                                                    <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Date</th>
+                                                    <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Topic</th>
+                                                    <th style={{ padding: '8px', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {sessions.filter(s => s.fullData?.student_refs?.some(sr => sr.toString() === newSessionForm.studentId.toString())).length > 0 ? (
+                                                    sessions
+                                                        .filter(s => s.fullData?.student_refs?.some(sr => sr.toString() === newSessionForm.studentId.toString()))
+                                                        .sort((a, b) => new Date(b.date) - new Date(a.date))
+                                                        .slice(0, 5)
+                                                        .map(s => (
+                                                            <tr key={s.id}>
+                                                                <td style={{ padding: '8px', borderBottom: '1px solid #f1f5f9' }}>{s.date}</td>
+                                                                <td style={{ padding: '8px', borderBottom: '1px solid #f1f5f9' }}>{s.topic}</td>
+                                                                <td style={{ padding: '8px', borderBottom: '1px solid #f1f5f9' }}>
+                                                                    <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', background: s.status === 'Completed' ? '#dcfce7' : '#fef3c7', color: s.status === 'Completed' ? '#166534' : '#92400e' }}>
+                                                                        {s.status}
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        ))
+                                                ) : (
+                                                    <tr>
+                                                        <td colSpan="3" style={{ padding: '16px', textAlign: 'center', color: '#94a3b8' }}>No session history found</td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </div>
                             )}

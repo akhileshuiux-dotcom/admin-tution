@@ -31,6 +31,7 @@ const Students = () => {
             const fetched = res.data.map(stu => ({
                 id: 'STU' + (stu.id || stu._id).toString().substring((stu.id || stu._id).toString().length - 4).toUpperCase(),
                 name: stu.full_name || stu.fullName,
+                class_name: stu.class_name || stu.className || 'N/A',
                 grade: stu.grade,
                 subject: stu.syllabus || 'N/A',
                 enrolledDate: stu.created_at || stu.createdAt,
@@ -63,6 +64,7 @@ const Students = () => {
         const q = searchQuery.toLowerCase();
         const matchesGlobalSearch = q === '' ||
             student.name?.toLowerCase().includes(q) ||
+            student.class_name?.toLowerCase().includes(q) ||
             student.grade?.toLowerCase().includes(q) ||
             student.subject?.toLowerCase().includes(q) ||
             student.tutor?.toLowerCase().includes(q) ||
@@ -93,9 +95,12 @@ const Students = () => {
     const handleSaveStudent = async (formData, editId) => {
         const payload = {
             fullName: formData.name,
+            class_name: formData.class_name,
             grade: formData.grade,
             syllabus: formData.subject,
             tutor: formData.tutor,
+            location: formData.location,
+            country: formData.country,
             status: formData.status
         };
 
@@ -103,7 +108,7 @@ const Students = () => {
             if (editId) {
                 const isMock = editId.startsWith('STU') && !editId.includes('offline'); // simple mock check
                 if (!isMock || typeof editId !== 'string') {
-                    await api.put(`/students/${editId}`, payload);
+                    await api.put(`/students/${editId}/`, payload);
                 }
 
                 setStudents(prev => prev.map(stu => {
@@ -121,9 +126,9 @@ const Students = () => {
                     return stu;
                 }));
             } else {
-                const res = await api.post('/students', payload);
+                const res = await api.post('/students/', payload);
                 const newTableEntry = {
-                    id: 'STU' + res.data._id.substring(res.data._id.length - 4).toUpperCase(),
+                    id: 'STU' + res.data._id.toString().substring(res.data._id.toString().length - 4).toUpperCase(),
                     name: res.data.fullName,
                     grade: res.data.grade,
                     subject: res.data.syllabus || 'N/A',
@@ -145,7 +150,7 @@ const Students = () => {
 
         try {
             if (studentToDelete.fullData?._id) {
-                await api.delete(`/students/${studentToDelete.fullData._id}`);
+                await api.delete(`/students/${studentToDelete.fullData._id}/`);
             }
             setStudents(prev => prev.filter(s => s.id !== studentToDelete.id));
             setSelectedStudentIds(prev => prev.filter(id => id !== studentToDelete.id));
@@ -283,6 +288,7 @@ const Students = () => {
                             )}
                             <th>ID</th>
                             <th>Student Name</th>
+                            <th>Class</th>
                             <th>Grade</th>
                             <th>Subject(s)</th>
                             <th>Enrolled Date</th>
@@ -307,6 +313,7 @@ const Students = () => {
                                 )}
                                 <td className="font-medium text-muted">{student.id}</td>
                                 <td className="font-semibold">{student.name}</td>
+                                <td>{student.class_name}</td>
                                 <td>{student.grade}</td>
                                 <td>{student.subject}</td>
                                 <td>{new Date(student.enrolledDate).toLocaleDateString()}</td>

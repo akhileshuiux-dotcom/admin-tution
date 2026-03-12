@@ -77,9 +77,9 @@ const Enquiries = () => {
                     return enq;
                 }));
             } else {
-                const res = await api.post('/enquiries', payload);
+                const res = await api.post('/enquiries/', payload);
                 const newTableEntry = {
-                    id: res.data._id.substring(res.data._id.length - 6).toUpperCase(),
+                    id: res.data._id.toString().substring(res.data._id.toString().length - 6).toUpperCase(),
                     studentName: res.data.studentName,
                     grade: res.data.grade,
                     subject: res.data.syllabus || 'N/A',
@@ -151,8 +151,8 @@ const Enquiries = () => {
                 payload.failureReason = 'No reason provided';
             }
 
-            if (enquiry.fullData?._id && !enquiry.id.startsWith('ENQ')) {
-                await api.put(`/enquiries/${enquiry.fullData._id}`, payload);
+            if (enquiry.fullData?._id && !enquiry.id.toString().startsWith('ENQ')) {
+                await api.put(`/enquiries/${enquiry.fullData._id}/`, payload);
             }
 
             setEnquiries(prev => prev.map(e =>

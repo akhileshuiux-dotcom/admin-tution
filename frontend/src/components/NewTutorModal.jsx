@@ -4,10 +4,11 @@ import './NewEnquiryModal.css';
 
 const NewTutorModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
     const defaultData = {
-        name: '', email: '', phone: '',
+        name: '', email: '', contactNumber: '',
         education: '', educationCertificate: null,
         subjects: '', assignedClasses: '',
         experience: '', experienceCertificate: null,
+        status: 'Active'
     };
 
     const [formData, setFormData] = useState(defaultData);
@@ -35,7 +36,7 @@ const NewTutorModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        onSubmit({ ...formData, status: initialData?.status || 'Active' });
+        onSubmit(formData);
         setFormData(defaultData);
         onClose();
     };
@@ -64,7 +65,7 @@ const NewTutorModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                         </div>
                         <div className="form-group" style={{ marginBottom: 0 }}>
                             <label className="form-label" style={{ fontSize: '0.85rem' }}>Phone Number</label>
-                            <input type="tel" className="form-input" name="phone" value={formData.phone} onChange={handleChange} placeholder="+1 234 567 890" required />
+                            <input type="tel" className="form-input" name="contactNumber" value={formData.contactNumber} onChange={handleChange} placeholder="+1 234 567 890" required />
                         </div>
                     </div>
 
@@ -99,7 +100,7 @@ const NewTutorModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                     </div>
 
                     <h3 className="h3" style={{ fontSize: '1rem', marginBottom: '0.75rem', color: 'var(--primary-color)', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>Teaching Assignments</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '0.5rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
                         <div className="form-group" style={{ marginBottom: 0 }}>
                             <label className="form-label" style={{ fontSize: '0.85rem' }}>Assigned Classes/Grades</label>
                             <input type="text" className="form-input" name="assignedClasses" value={formData.assignedClasses} onChange={handleChange} placeholder="e.g. Grade 10, Grade 11" required />
@@ -109,6 +110,22 @@ const NewTutorModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                             <input type="text" className="form-input" name="subjects" value={formData.subjects} onChange={handleChange} placeholder="e.g. Physics, Maths" required />
                         </div>
                     </div>
+
+                    {initialData && (
+                        <>
+                            <h3 className="h3" style={{ fontSize: '1rem', marginBottom: '0.75rem', color: 'var(--primary-color)', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>Management</h3>
+                            <div className="form-group" style={{ marginBottom: '1rem' }}>
+                                <label className="form-label" style={{ fontSize: '0.85rem' }}>Tutor Status</label>
+                                <select className="form-input" name="status" value={formData.status} onChange={handleChange} required>
+                                    <option value="Active">Active</option>
+                                    <option value="Inactive">Inactive</option>
+                                    <option value="Scheduled Leave">Scheduled Leave</option>
+                                    <option value="Leave">Leave</option>
+                                    <option value="Resigned">Resigned</option>
+                                </select>
+                            </div>
+                        </>
+                    )}
                 </form>
 
                 <div className="modal-actions" style={{ padding: '1.25rem 1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: '1rem', flexShrink: 0 }}>

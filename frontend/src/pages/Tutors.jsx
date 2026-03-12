@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FiPlus, FiFilter, FiMoreVertical, FiStar, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { FiPlus, FiFilter, FiMoreVertical, FiStar, FiEdit2, FiTrash2, FiAward } from 'react-icons/fi';
 import './Tutors.css';
 import TutorProfileModal from '../components/TutorProfileModal';
 import NewTutorModal from '../components/NewTutorModal';
@@ -21,15 +21,26 @@ const Tutors = () => {
         setLoading(true);
         try {
             const res = await api.get('/tutors/');
-            const mapped = res.data.map(t => ({
-                id: (t.id || t._id).toString().startsWith('TUT') ? t.id : `TUT${(t.id || t._id).toString().padStart(3, '0')}`,
-                name: t.name,
-                subjects: t.classesCanTeach || t.subjects || 'N/A', // Django returns classesCanTeach from the serializer update
-                experience: `${t.teachingExperienceMonths || 0} Mo`,
-                status: t.status,
-                rating: 4.8, // Static mock for now as backend doesn't track rating
-                fullData: t
-            }));
+            const mapped = res.data.map(t => {
+                const formatArray = (val) => {
+                    if (!val) return 'N/A';
+                    if (Array.isArray(val)) {
+                        return val.map(item => typeof item === 'object' ? (item.subject || item.degree || JSON.stringify(item)) : item).join(', ');
+                    }
+                    return val;
+                };
+
+                return {
+                    id: (t.id || t._id || '').toString().startsWith('TUT') ? (t.id || t._id).toString() : `TUT${(t.id || t._id || '0').toString().padStart(3, '0')}`,
+                    name: t.name || 'Unknown',
+                    subjects: formatArray(t.subjects),
+                    classes: formatArray(t.assignedClasses),
+                    experience: `${t.teachingExperienceMonths || 0} Mo`,
+                    education: formatArray(t.education),
+                    status: t.status || 'Inactive',
+                    fullData: t
+                };
+            });
             setTutors(mapped);
         } catch (err) {
             console.error("Failed to fetch tutors:", err);
@@ -52,7 +63,8 @@ const Tutors = () => {
             },
             contact_number: formData.contactNumber || '0000000000',
             status: formData.status,
-            classes_can_teach: formData.subjects,
+            subject_expertise: formData.subjects,
+            classes_can_teach: formData.assignedClasses,
             teaching_experience_months: parseInt(formData.experience) || 0
         };
 
@@ -97,13 +109,13 @@ const Tutors = () => {
     const filteredTutors = tutors.filter(tutor => {
         const q = searchQuery.toLowerCase();
         const matchesGlobalSearch = q === '' ||
-            tutor.name?.toLowerCase().includes(q) ||
-            tutor.subjects?.toLowerCase().includes(q) ||
-            tutor.id?.toLowerCase().includes(q);
+            (tutor.name && tutor.name.toLowerCase().includes(q)) ||
+            (tutor.subjects && tutor.subjects.toLowerCase().includes(q)) ||
+            (tutor.id && tutor.id.toString().toLowerCase().includes(q));
 
         return matchesGlobalSearch &&
-            (filters.name === '' || tutor.name.toLowerCase().includes(filters.name.toLowerCase())) &&
-            (filters.subjects === '' || tutor.subjects.toLowerCase().includes(filters.subjects.toLowerCase())) &&
+            (filters.name === '' || (tutor.name && tutor.name.toLowerCase().includes(filters.name.toLowerCase()))) &&
+            (filters.subjects === '' || (tutor.subjects && tutor.subjects.toLowerCase().includes(filters.subjects.toLowerCase()))) &&
             (filters.status === '' || tutor.status === filters.status);
     });
 
@@ -133,6 +145,8 @@ const Tutors = () => {
                         <option value="Active">Active</option>
                         <option value="Inactive">Inactive</option>
                         <option value="Scheduled Leave">Scheduled Leave</option>
+                        <option value="Leave">Leave</option>
+                        <option value="Resigned">Resigned</option>
                     </select>
                     <button className="btn btn-secondary" onClick={() => setFilters({ name: '', subjects: '', status: '' })}>Clear</button>
                 </div>
@@ -146,9 +160,9 @@ const Tutors = () => {
             ) : (
                 <div className="tutors-grid">
                     {filteredTutors.map((tutor) => (
-                        <div key={tutor.id} className="tutor-card glass-panel">
+                        <div key={tutor.id || Math.random()} className="tutor-card glass-panel">
                             <div className="tutor-card-header">
-                                <div className="tutor-avatar">{tutor.name.charAt(0)}</div>
+                                <div className="tutor-avatar">{(tutor.name || 'U').charAt(0)}</div>
                                 <div className="tutor-actions" style={{ position: 'relative' }}>
                                     <button className="icon-btn text-muted" onClick={(e) => { e.stopPropagation(); toggleDropdown(tutor.id); }}>
                                         <FiMoreVertical />
@@ -171,8 +185,8 @@ const Tutors = () => {
                                 <p className="tutor-subjects text-muted">{typeof tutor.subjects === 'string' ? tutor.subjects : JSON.stringify(tutor.subjects)}</p>
 
                                 <div className="tutor-stats">
-                                    <div className="stat-pill">
-                                        <FiStar style={{ color: 'var(--warning-color)' }} /> {tutor.rating}
+                                    <div className="stat-pill" title="Qualification">
+                                        <FiAward style={{ color: 'var(--primary-color)' }} /> {tutor.education}
                                     </div>
                                     <div className="stat-pill">
                                         {tutor.experience}
@@ -180,8 +194,12 @@ const Tutors = () => {
                                 </div>
 
                                 <div className="tutor-footer flex justify-between mt-4 items-center">
-                                    <span className={`status-badge ${tutor.status === 'Active' ? 'status-badge-open' : 'status-badge-draft'}`}>
-                                        {tutor.status}
+                                    <span className={`status-badge ${
+                                        tutor.status === 'Active' ? 'status-badge-open' : 
+                                        tutor.status === 'Resigned' ? 'status-badge-closed-red' : 
+                                        'status-badge-draft'
+                                    }`}>
+                                        {tutor.status || 'Inactive'}
                                     </span>
                                     <button className="btn btn-secondary btn-sm" onClick={() => setSelectedTutor(tutor)}>View Profile</button>
                                 </div>

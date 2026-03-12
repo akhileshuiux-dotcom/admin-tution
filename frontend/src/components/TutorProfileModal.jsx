@@ -24,12 +24,16 @@ const TutorProfileModal = ({ isOpen, onClose, tutor }) => {
                             fontSize: '2rem', fontWeight: 'bold', color: 'white',
                             boxShadow: '0 4px 20px rgba(176, 133, 245, 0.4)'
                         }}>
-                            {tutor.name.charAt(0)}
+                            {(tutor.name || 'U').charAt(0)}
                         </div>
                         <div>
-                            <h2 className="h2" style={{ marginBottom: '0.35rem' }}>{tutor.name}</h2>
-                            <span className={`status-badge ${tutor.status === 'Active' ? 'status-badge-open' : 'status-badge-draft'}`} style={{ display: 'inline-block' }}>
-                                {tutor.status}
+                            <h2 className="h2" style={{ marginBottom: '0.35rem' }}>{tutor.name || 'Unknown Tutor'}</h2>
+                            <span className={`status-badge ${
+                                tutor.status === 'Active' ? 'status-badge-open' : 
+                                tutor.status === 'Resigned' ? 'status-badge-closed-red' : 
+                                'status-badge-draft'
+                            }`} style={{ display: 'inline-block' }}>
+                                {tutor.status || 'Inactive'}
                             </span>
                         </div>
                     </div>
@@ -59,22 +63,22 @@ const TutorProfileModal = ({ isOpen, onClose, tutor }) => {
                             </div>
 
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <div style={{ background: 'rgba(234, 179, 8, 0.1)', padding: '10px', borderRadius: '8px' }}>
-                                    <FiStar style={{ color: '#eab308' }} size={18} />
+                                <div style={{ background: 'rgba(176, 133, 245, 0.1)', padding: '10px', borderRadius: '8px' }}>
+                                    <FiAward className="text-primary" size={18} />
                                 </div>
                                 <div>
-                                    <p className="text-xs text-muted" style={{ marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Rating</p>
-                                    <p style={{ fontWeight: 500, fontSize: '0.95rem' }}>{tutor.rating} / 5.0</p>
+                                    <p className="text-xs text-muted" style={{ marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Qualification</p>
+                                    <p style={{ fontWeight: 500, fontSize: '0.95rem' }}>{tutor.education}</p>
                                 </div>
                             </div>
 
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                 <div style={{ background: 'rgba(176, 133, 245, 0.1)', padding: '10px', borderRadius: '8px' }}>
-                                    <FiClock className="text-primary" size={18} />
+                                    <FiBook className="text-primary" size={18} />
                                 </div>
                                 <div>
-                                    <p className="text-xs text-muted" style={{ marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Classes Taught</p>
-                                    <p style={{ fontWeight: 500, fontSize: '0.95rem' }}>142 Total</p>
+                                    <p className="text-xs text-muted" style={{ marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Class</p>
+                                    <p style={{ fontWeight: 500, fontSize: '0.95rem' }}>{tutor.classes}</p>
                                 </div>
                             </div>
                         </div>

@@ -4,7 +4,7 @@ import './NewEnquiryModal.css'; // Reusing generic modal styles
 
 const StudentModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
     const defaultData = {
-        name: '', grade: '', subject: '', tutor: '', status: 'Active'
+        name: '', class_name: '', grade: '', subject: '', tutor: '', location: '', country: '', status: 'Active'
     };
 
     const [formData, setFormData] = useState(defaultData);
@@ -14,9 +14,12 @@ const StudentModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
         if (initialData) {
             setFormData({
                 name: initialData.name || '',
+                class_name: initialData.fullData?.class_name || '',
                 grade: initialData.grade || '',
                 subject: initialData.subject || '',
                 tutor: initialData.tutor || 'Unassigned',
+                location: initialData.fullData?.location || '',
+                country: initialData.fullData?.country || '',
                 status: initialData.status || 'Active'
             });
         } else {
@@ -60,30 +63,42 @@ const StudentModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                             <input type="text" className="form-input" name="name" value={formData.name} onChange={handleChange} required placeholder="John Doe" />
                         </div>
                         <div className="form-group">
-                            <label className="form-label">Grade *</label>
-                            <input type="text" className="form-input" name="grade" value={formData.grade} onChange={handleChange} required placeholder="Grade 10" />
+                            <label className="form-label">Class *</label>
+                            <input type="text" className="form-input" name="class_name" value={formData.class_name} onChange={handleChange} required placeholder="Class 10-A" />
                         </div>
                     </div>
                     <div className="form-row">
+                        <div className="form-group">
+                            <label className="form-label">Grade *</label>
+                            <input type="text" className="form-input" name="grade" value={formData.grade} onChange={handleChange} required placeholder="Grade 10" />
+                        </div>
                         <div className="form-group">
                             <label className="form-label">Subject(s) *</label>
                             <input type="text" className="form-input" name="subject" value={formData.subject} onChange={handleChange} required placeholder="Mathematics, Physics" />
                         </div>
-                        <div className="form-group">
-                            <label className="form-label">Tutor</label>
-                            <input type="text" className="form-input" name="tutor" value={formData.tutor} onChange={handleChange} placeholder="Sarah Jenkins" />
-                        </div>
                     </div>
                     <div className="form-row">
                         <div className="form-group">
-                            <label className="form-label">Status *</label>
-                            <select className="form-input" name="status" value={formData.status} onChange={handleChange} required>
-                                <option value="Active">Active</option>
-                                <option value="Inactive">Inactive</option>
-                                <option value="Graduated">Graduated</option>
-                            </select>
+                            <label className="form-label">Location *</label>
+                            <input type="text" className="form-input" name="location" value={formData.location} onChange={handleChange} required placeholder="City/State" />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Country *</label>
+                            <input type="text" className="form-input" name="country" value={formData.country} onChange={handleChange} required placeholder="United Kingdom" />
                         </div>
                     </div>
+                    {initialData && (
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label className="form-label">Status *</label>
+                                <select className="form-input" name="status" value={formData.status} onChange={handleChange} required>
+                                    <option value="Active">Active</option>
+                                    <option value="Inactive">Inactive</option>
+                                    <option value="Graduated">Graduated</option>
+                                </select>
+                            </div>
+                        </div>
+                    )}
                     <div className="modal-actions">
                         <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
                         <button type="submit" className="btn btn-primary" disabled={loading}>
