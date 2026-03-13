@@ -1,0 +1,218 @@
+.login-layout-wrapper {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: row;
+    background-color: #1a1b1e;
+    font-family: 'Inter', sans-serif;
+    width: 100%;
+}
+
+.login-side-form {
+    flex: 0 0 45%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: #1a1b1e;
+    padding: 2rem;
+}
+
+.login-form-container {
+    width: 100%;
+    max-width: 400px;
+    animation: fadeIn 0.6s ease-out;
+}
+
+/* Form Styles */
+.login-heading {
+    color: white;
+    font-size: 2.2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.login-subtitle {
+    color: #8b8e98;
+    font-size: 0.9rem;
+    margin-bottom: 2.5rem;
+}
+
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.form-group-v2 {
+    position: relative;
+    width: 100%;
+}
+
+.form-input-v2 {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid #3f4045;
+    color: white;
+    padding: 0.5rem 0;
+    font-size: 0.95rem;
+    transition: border-color 0.3s ease;
+}
+
+.form-input-v2:focus {
+    outline: none;
+    border-bottom-color: #a476ec;
+}
+
+.form-input-v2::placeholder {
+    color: #6a6d7a;
+    font-size: 0.9rem;
+}
+
+.password-group {
+    display: flex;
+    align-items: center;
+}
+
+.password-toggle {
+    background: transparent;
+    border: none;
+    color: #6a6d7a;
+    position: absolute;
+    right: 0;
+    bottom: 0.5rem;
+    cursor: pointer;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.password-toggle:hover {
+    color: #a476ec;
+}
+
+.forgot-password {
+    display: flex;
+    justify-content: flex-start;
+    margin-top: -0.5rem;
+}
+
+.forgot-password a {
+    color: #6a6d7a;
+    text-decoration: none;
+    font-size: 0.85rem;
+    transition: color 0.2s ease;
+}
+
+.forgot-password a:hover {
+    color: #a476ec;
+}
+
+.btn-login-v2 {
+    background-color: #b085f5;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0.8rem;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    margin-top: 1rem;
+    transition: background-color 0.2s ease;
+}
+
+.btn-login-v2:hover {
+    background-color: #9f70eb;
+}
+
+.btn-login-v2:disabled {
+    background-color: #695191;
+    cursor: not-allowed;
+}
+
+.signup-prompt {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 3rem;
+}
+
+.signup-prompt span {
+    color: #6a6d7a;
+    font-size: 0.9rem;
+}
+
+.btn-signup-outline {
+    background-color: #2b2c31;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.5rem 1.2rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.btn-signup-outline:hover {
+    background-color: #383a41;
+}
+
+/* Brand Side Styles */
+.login-side-brand {
+    flex: 1;
+    position: relative;
+    background-color: #a476ec;
+    background-image:
+        radial-gradient(circle at 10% 20%, rgba(188, 143, 243, 0.4) 0%, transparent 40%),
+        radial-gradient(circle at 80% 80%, rgba(133, 91, 219, 0.4) 0%, transparent 40%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 6rem 4rem;
+    overflow: hidden;
+}
+
+.login-branding {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    max-width: 600px;
+    animation: fadeIn 0.8s ease-out 0.2s both;
+}
+
+.login-hero-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 5;
+    animation: fadeIn 1s ease-out 0.4s both;
+}
+
+.login-hero-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 992px) {
+    .login-layout-wrapper {
+        flex-direction: column-reverse;
+    }
+
+    .login-side-form {
+        flex: 1;
+        padding-top: 4rem;
+        padding-bottom: 4rem;
+    }
+
+    .login-side-brand {
+        flex: 0 0 auto;
+        padding: 4rem 2rem;
+    }
+}
