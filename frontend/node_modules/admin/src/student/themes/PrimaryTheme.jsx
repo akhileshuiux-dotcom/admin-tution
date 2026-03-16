@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Cloud, Star, Sparkles, Rocket, Ghost, Heart } from 'lucide-react';
 
-const PrimaryTheme = ({ user, children }) => {
+const PrimaryTheme = ({ user, children, onLogout, onNavigate, currentView }) => {
   return (
     <div className="min-h-screen bg-[#FFFBEB] text-amber-900 transition-colors duration-500 overflow-x-hidden font-plus-jakarta">
       {/* ── Playful Background Elements ─────────────────────────────────────── */}
@@ -116,7 +116,7 @@ const PrimaryTheme = ({ user, children }) => {
       </main>
 
       {/* ── Footer Navigation Help ────────────────────────────────────────── */}
-      <footer className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50">
+      <footer className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-4">
           <motion.div 
              whileHover={{ y: -5 }}
              className="bg-slate-900 text-white px-10 py-5 rounded-[2.5rem] shadow-2xl flex items-center gap-6 border-b-8 border-black"
@@ -126,6 +126,13 @@ const PrimaryTheme = ({ user, children }) => {
              </div>
              <p className="text-[14px] font-black uppercase tracking-widest">Assistant Ghosty is online</p>
           </motion.div>
+          
+          <button 
+            onClick={onLogout}
+            className="bg-rose-500 text-white px-6 py-2 rounded-full font-bold text-xs shadow-lg hover:bg-rose-600 transition-colors"
+          >
+            Log out
+          </button>
       </footer>
     </div>
   );

@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   MoreHorizontal, CheckCircle, Clock, X, 
   PlayCircle, FileText, User, MapPin, 
   Calendar, SlidersHorizontal, ArrowUpRight,
-  Plus, Search, Filter
+  Plus, Search, Filter, Layout
 } from 'lucide-react';
 
 const INITIAL_TASKS = {
@@ -19,6 +19,8 @@ const INITIAL_TASKS = {
     { id: 4, title: 'Biology lab report', subject: 'Biology', due: 'Apr 20', teacher: 'Mr. Hodge', priority: 'low', submitted: true, description: 'Lab report on the cell structure experiment. Include methodology, observations, and conclusion.', attachment: 'Lab_Report_Template.docx' },
   ],
 };
+
+const STORAGE_KEY = 'eduway_student_tasks';
 
 const priorityStyles = {
   high: 'bg-rose-100 text-rose-600',
@@ -113,32 +115,67 @@ const TaskDetail = ({ task, col, onClose, onStart, onComplete, onProgressUpdate 
           )}
 
           {col === 'In Progress' && (
-            <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white relative overflow-hidden">
+            <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white relative overflow-hidden ring-1 ring-white/10">
                <SlidersHorizontal className="absolute -bottom-10 -right-10 w-48 h-48 text-white/5" />
                <div className="flex justify-between items-center mb-8 relative z-10">
-                 <h3 className="text-xl font-bold font-plus-jakarta">Current Progress</h3>
-                 <span className="text-3xl font-black text-blue-400">{localProgress}%</span>
+                 <div>
+                    <h3 className="text-xl font-bold font-plus-jakarta italic">Current Progress</h3>
+                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Slide to adjust status</p>
+                 </div>
+                 <div className="flex flex-col items-end">
+                    <span className="text-4xl font-black text-blue-400 leading-none">{localProgress}%</span>
+                    <span className="text-[9px] font-black text-blue-500/50 uppercase tracking-tighter">Live Update</span>
+                 </div>
                </div>
-               <div className="relative h-4 bg-white/10 rounded-full overflow-hidden mb-10 relative z-10">
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: `${localProgress}%` }}
-                    className="absolute top-0 left-0 h-full bg-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.5)]"
-                  />
+               
+               <div className="relative z-10 space-y-6">
+                 <div className="relative pt-2 pb-6">
+                    <div className="absolute top-1/2 left-0 w-full h-1.5 bg-white/10 rounded-full -translate-y-1/2 overflow-hidden">
+                       <motion.div 
+                          initial={false}
+                          animate={{ width: `${localProgress}%` }}
+                          className="h-full bg-gradient-to-r from-blue-600 to-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.5)]"
+                       />
+                    </div>
+                    <input
+                      type="range"
+                      min="0" max="100" step="1"
+                      value={localProgress}
+                      onChange={(e) => setLocalProgress(Number(e.target.value))}
+                      className="relative w-full h-6 bg-transparent appearance-none cursor-pointer z-20 
+                                [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6
+                                [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full 
+                                [&::-webkit-slider-thumb]:shadow-[0_0_15px_rgba(255,255,255,0.5)]
+                                [&::-webkit-slider-thumb]:border-4 [&::-webkit-slider-thumb]:border-blue-600
+                                [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:h-6
+                                [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:rounded-full
+                                [&::-moz-range-thumb]:border-4 [&::-moz-range-thumb]:border-blue-600"
+                    />
+                    
+                    {/* Tick Marks */}
+                    <div className="absolute -bottom-1 left-0 w-full flex justify-between px-1">
+                      {[0, 25, 50, 75, 100].map(p => (
+                        <div key={p} className="flex flex-col items-center gap-2">
+                          <div className={`w-1 h-1 rounded-full ${localProgress >= p ? 'bg-blue-400' : 'bg-white/20'}`} />
+                          <button 
+                            onClick={() => setLocalProgress(p)}
+                            className={`text-[9px] font-black transition-colors ${localProgress === p ? 'text-blue-400' : 'text-white/30 hover:text-white/60'}`}
+                          >
+                            {p}%
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                 </div>
+
+                 <button 
+                    onClick={() => onProgressUpdate(task, localProgress)}
+                    className="group w-full py-5 bg-white text-slate-900 rounded-2xl font-black text-[13px] uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all shadow-xl hover:shadow-blue-500/20 flex items-center justify-center gap-3 active:scale-95"
+                 >
+                   <SlidersHorizontal className="w-4 h-4" />
+                   Keep Saving Progress
+                 </button>
                </div>
-               <input
-                 type="range"
-                 min="0" max="100" step="1"
-                 value={localProgress}
-                 onChange={(e) => setLocalProgress(Number(e.target.value))}
-                 className="w-full h-8 opacity-0 absolute inset-0 cursor-pointer z-20"
-               />
-               <button 
-                  onClick={() => onProgressUpdate(task, localProgress)}
-                  className="w-full py-4 bg-white text-slate-900 rounded-2xl font-black text-[14px] uppercase tracking-widest hover:bg-white/90 transition-all relative z-10"
-               >
-                 Keep Saving Progress
-               </button>
             </div>
           )}
         </div>
@@ -216,8 +253,20 @@ const TaskCard = ({ task, col, onClick }) => (
 
 // ── Main View ─────────────────────────────────────────────────────────────────
 const TasksView = () => {
-  const [tasks, setTasks] = useState(INITIAL_TASKS);
+  const [tasks, setTasks] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? JSON.parse(saved) : INITIAL_TASKS;
+    } catch (error) {
+      console.error('Error parsing tasks from storage:', error);
+      return INITIAL_TASKS;
+    }
+  });
   const [selected, setSelected] = useState(null);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+  }, [tasks]);
 
   const handleStart = (task) => {
     setTasks(prev => {

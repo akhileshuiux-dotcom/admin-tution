@@ -1,0 +1,9 @@
+ID | Email | Role | Is Active
+1 | admin@gmail.com | Admin | True
+2 | debugtutor2@example.com | Tutor | True
+3 | finaltutor@example.com | Tutor | True
+4 | tester@example.com | Tutor | True
+5 | abin@gmail.com | Tutor | True
+6 | test@gmail.com | Admin | True
+7 | abin@example.com | Student | True
+8 | teststudent@example.com | Student | True

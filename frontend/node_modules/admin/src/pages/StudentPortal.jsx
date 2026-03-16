@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import axios from 'axios';
+import api from '../api';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Background from '../student/components/Background';
@@ -33,8 +33,8 @@ const StudentPortal = () => {
     const fetchProfile = async () => {
       try {
         const token = localStorage.getItem('token');
-        const resp = await axios.get(`${STUDENT_API}profile/`, {
-          headers: { Authorization: `Token ${token}` },
+        const resp = await api.get(`${STUDENT_API}profile/`, {
+          headers: { Authorization: `Bearer ${token}` },
         });
         setStudentProfile(resp.data);
         fetchCourses(token);
@@ -58,8 +58,8 @@ const StudentPortal = () => {
 
   const fetchCourses = async (token) => {
     try {
-      const resp = await axios.get(`${STUDENT_API}courses/`, {
-        headers: { Authorization: `Token ${token}` },
+      const resp = await api.get(`${STUDENT_API}courses/`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
       setCourses(resp.data);
     } catch (err) {
@@ -69,7 +69,7 @@ const StudentPortal = () => {
 
   const handleLogout = async () => {
     await signOut();
-    navigate('/login');
+    navigate('/login/student');
   };
 
   const onNavigate = (view) => setActiveView(view);
@@ -120,11 +120,13 @@ const StudentPortal = () => {
             <div className="space-y-4">
               <div className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100">
                 <span className="text-slate-400 font-medium">Name</span>
-                <span className="font-bold text-slate-900">{studentProfile.first_name} {studentProfile.last_name}</span>
+                <span className="font-bold text-slate-900">
+                  {studentProfile.user?.first_name || studentProfile.first_name} {studentProfile.user?.last_name || studentProfile.last_name}
+                </span>
               </div>
               <div className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100">
                 <span className="text-slate-400 font-medium">Email</span>
-                <span className="font-bold text-slate-900">{studentProfile.email}</span>
+                <span className="font-bold text-slate-900">{studentProfile.user?.email || studentProfile.email}</span>
               </div>
               <div className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100">
                 <span className="text-slate-400 font-medium">Grade Level</span>

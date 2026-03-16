@@ -4,7 +4,7 @@ import {
   Search, Bell, MoreHorizontal, ChevronDown, X, 
   Settings, LogOut, User, HelpCircle, BookOpen, 
   CheckCheck, Clock, MessageSquare, ArrowUpRight,
-  TrendingUp, Calendar, Layout, FileText
+  TrendingUp, Calendar, Layout, FileText, Plus
 } from 'lucide-react';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
@@ -14,17 +14,24 @@ const NOTIFICATIONS = [
   { id: 3, icon: '📅', title: 'Live class starting soon', body: 'Mathematics with Mrs. Goodman — 10 min.', time: '3 hr ago', unread: false },
 ];
 
-const TASKS = [
-  { id: 1, title: "Read poem & answer questions", subject: "English Literature", date: "Apr 28, 2025", comments: "12", status: "In progress", color: "blue" },
-  { id: 2, title: "Create a comic strip with a story", subject: "Social Studies", date: "May 17, 2025", comments: "0", status: "To do", color: "emerald" },
-  { id: 3, title: "Prepare for the math test", subject: "Math", date: "May 11, 2025", comments: "2", status: "To do", color: "amber" },
-  { id: 4, title: "Biology Lab Report", subject: "Science", date: "May 15, 2025", comments: "5", status: "In progress", color: "purple" },
-];
+const STORAGE_KEY = 'eduway_student_tasks';
+
+const INITIAL_TASKS = {
+  'To Do': [
+    { id: 1, title: 'Create a comic strip with a story', subject: 'Social Studies', due: 'May 17', teacher: 'Mrs. Murray', priority: 'medium', description: 'Create a 6-panel comic strip illustrating a historical event of your choice. Include dialogue and captions. Submit as PDF.', attachment: 'Comic_Template.pdf' },
+    { id: 2, title: 'Prepare for the math test', subject: 'Math', due: 'May 11', teacher: 'Mrs. Goodman', priority: 'high', description: 'Study Chapter 3 (Linear Equations) and Chapter 4 (Quadratic Equations). Review examples from pages 45–72. Practice all end-of-chapter exercises.', attachment: null },
+  ],
+  'In Progress': [
+    { id: 3, title: 'Read poem & answer questions', subject: 'English Literature', due: 'Apr 28', teacher: 'Ms. Melton', priority: 'high', progress: 45, description: 'Read "The Road Not Taken" by Robert Frost. Answer the 5 comprehension questions on the worksheet. Write a short reflection (150 words).', attachment: 'Poem_Worksheet.docx' },
+  ],
+  'Done': [
+    { id: 4, title: 'Biology lab report', subject: 'Biology', due: 'Apr 20', teacher: 'Mr. Hodge', priority: 'low', submitted: true, description: 'Lab report on the cell structure experiment. Include methodology, observations, and conclusion.', attachment: 'Lab_Report_Template.docx' },
+  ],
+};
 
 const NOTES = [
-  { id: 1, title: "Math conspect", date: "May 05, 2025", content: "A linear equation is of the form: ax+b=c, where x is the unknown variable...", color: "emerald" },
-  { id: 2, title: "Biology lesson", date: "Apr 29, 2025", content: "A cell is the basic structural, functional, and biological unit of all living organisms...", color: "blue" },
-  { id: 3, title: "History Timeline", date: "May 01, 2025", content: "Key events during the French Revolution (1789-1799) including the Storming of the Bastille...", color: "amber" },
+  { id: 1, title: "Math conspect", date: "May 05, 2025", content: "A linear equation is an equation of the form: ax+b=cax+b = cax+b=c, where xxx is the variable, aaa, bbb, and ccc are constants, and a≠0a \neq 0a=0.", color: "bg-[#bbf7d0]" },
+  { id: 2, title: "Biology conspect", date: "Apr 29, 2025", content: "A cell is the basic structural, functional, and biological unit of all living organisms. It is the smallest unit capable of performing life functions.", color: "bg-[#a5b4fc]" },
 ];
 
 const SCHEDULE = [
@@ -87,8 +94,10 @@ const ProfileDropdown = ({ user, onLogout }) => (
   >
     <div className="px-6 py-6 bg-slate-900 rounded-[2rem] text-white overflow-hidden relative group">
       <div className="absolute inset-0 bg-blue-600 opacity-0 group-hover:opacity-10 transition-opacity" />
-      <p className="text-[16px] font-bold font-plus-jakarta">{user?.first_name} {user?.last_name}</p>
-      <p className="text-[12px] opacity-60 font-medium truncate mt-1">{user?.email}</p>
+      <p className="text-[16px] font-bold font-plus-jakarta">
+        {user?.user?.first_name || user?.first_name} {user?.user?.last_name || user?.last_name}
+      </p>
+      <p className="text-[12px] opacity-60 font-medium truncate mt-1">{user?.user?.email || user?.email}</p>
       <div className="mt-4 flex items-center gap-2">
         <span className="bg-white/20 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">Student ID: 22045</span>
       </div>
@@ -119,96 +128,66 @@ const ProfileDropdown = ({ user, onLogout }) => (
   </motion.div>
 );
 
-const TaskCard = ({ title, subject, date, status, comments, color }) => (
-  <motion.div
-    whileHover={{ y: -8, scale: 1.01 }}
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    className="group bg-white/70 backdrop-blur-md rounded-[2.5rem] p-7 border border-white/50 shadow-[0_8px_30px_rgba(0,0,0,0.02)] hover:shadow-[0_25px_50px_rgba(0,0,0,0.06)] transition-all cursor-pointer relative overflow-hidden"
-  >
-    <div className="absolute top-0 right-0 p-7 opacity-0 group-hover:opacity-100 transition-all">
-      <div className="w-12 h-12 bg-slate-900 rounded-full flex items-center justify-center text-white shadow-xl shadow-slate-900/10">
-        <ArrowUpRight className="w-5 h-5" />
-      </div>
-    </div>
-    <div className="flex items-center gap-3 mb-5">
-      <div className={`px-4 py-1.5 rounded-full text-[10px] font-extrabold uppercase tracking-widest ${
-        status === 'In progress' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'
+const TaskCard = ({ title, subject, due, status, progress }) => (
+  <div className="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer">
+    <div className="flex justify-between items-start mb-2">
+      <span className="text-[12px] font-semibold text-slate-500">{subject}</span>
+      <span className={`text-[10px] font-bold px-3 py-1 rounded-full uppercase ${
+        status === 'In Progress' ? 'bg-[#fef3c7] text-[#92400e]' : status === 'Done' ? 'bg-emerald-100 text-emerald-700' : 'bg-[#e0e7ff] text-[#3730a3]'
       }`}>
         {status}
-      </div>
-      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{subject}</span>
+      </span>
     </div>
-    <h4 className="text-[18px] font-extrabold text-slate-900 mb-6 leading-[1.3] font-plus-jakarta group-hover:text-blue-600 transition-colors pr-10">{title}</h4>
-    <div className="flex items-center justify-between border-t border-slate-100 pt-5 mt-auto">
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2 text-slate-400">
-          <Calendar className="w-3.5 h-3.5" />
-          <span className="text-[11px] font-bold">{date}</span>
-        </div>
-        <div className="flex items-center gap-2 text-slate-400">
-          <MessageSquare className="w-3.5 h-3.5" />
-          <span className="text-[11px] font-bold">{comments}</span>
-        </div>
+    <h4 className="text-[16px] font-bold text-slate-800 mb-4">{title}</h4>
+    
+    <div className="flex gap-1 mb-4 h-2.5">
+      {[...Array(10)].map((_, i) => (
+        <div 
+          key={i} 
+          className={`flex-1 rounded-full ${
+            i < (progress / 10) 
+              ? 'bg-[#22c55e] opacity-50' 
+              : 'bg-slate-100 border-2 border-slate-200 border-dashed border-opacity-20'
+          }`}
+          style={i < (progress / 10) ? { backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(255,255,255,0.2) 5px, rgba(255,255,255,0.2) 10px)' } : {}}
+        />
+      ))}
+    </div>
+ 
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-1 text-slate-500">
+        <span className="text-[11px] font-semibold">{due}</span>
       </div>
-      <div className="flex -space-x-2">
-        {[1, 2, 3].map(i => (
-          <img 
-            key={i} 
-            src={`https://ui-avatars.com/api/?name=User+${i}&background=random`} 
-            className="w-6 h-6 rounded-full border-2 border-white" 
-            alt="user"
-          />
-        ))}
+      <div className="flex items-center gap-1 text-slate-500">
+        <span className="text-[11px] font-semibold">{progress}% complete</span>
       </div>
     </div>
-  </motion.div>
+  </div>
 );
 
-const NoteCard = ({ title, content, date, color }) => (
-  <motion.div
-    whileHover={{ scale: 1.02, rotate: [-0.5, 0.5, 0] }}
-    className="min-w-[320px] bg-white/70 backdrop-blur-md rounded-[2.5rem] p-8 border border-white/50 shadow-[0_10px_30px_rgba(0,0,0,0.03)] hover:shadow-xl transition-all cursor-pointer group"
-  >
-    <div className="flex justify-between items-start mb-6">
-      <div className={`w-14 h-14 rounded-3xl flex items-center justify-center group-hover:scale-110 transition-transform ${
-        color === 'emerald' ? 'bg-emerald-50 text-emerald-600' : 
-        color === 'blue' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'
-      }`}>
-        <FileText className="w-6 h-6" />
-      </div>
-      <MoreHorizontal className="w-5 h-5 text-slate-300 hover:text-slate-600 transition-colors" />
+const NoteCard = ({ title, date, content, color }) => (
+  <div className={`${color} rounded-[2rem] p-6 min-w-[300px] flex-1 flex flex-col`}>
+    <div className="flex justify-between items-center mb-6">
+      <h4 className="text-[18px] font-bold text-slate-800">{title}</h4>
+      <button className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center">
+        <MoreHorizontal className="w-4 h-4 text-slate-600" />
+      </button>
     </div>
-    <h4 className="text-[18px] font-extrabold text-slate-900 mb-3 font-plus-jakarta">{title}</h4>
-    <p className="text-[14px] text-slate-500 font-medium leading-relaxed line-clamp-2 mb-6">{content}</p>
-    <div className="flex items-center justify-between">
-      <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest">{date}</span>
-      <ArrowUpRight className="w-4 h-4 text-blue-500 opacity-0 group-hover:opacity-100 transition-all" />
-    </div>
-  </motion.div>
+    <p className="text-[14px] font-medium text-slate-800 mb-10 leading-relaxed flex-grow">{content}</p>
+    <span className="text-[12px] font-bold text-slate-500">{date}</span>
+  </div>
 );
 
 const ScheduleItem = ({ time, lesson, teacher, location, active }) => (
-  <motion.div 
-    whileHover={{ x: 10 }}
-    className={`flex items-center gap-6 p-5 rounded-[2rem] transition-all cursor-pointer ${
-      active ? 'bg-slate-900 text-white shadow-2xl shadow-slate-900/10' : 'hover:bg-white/80'
-    }`}
-  >
-    <div className="w-24 shrink-0">
-      <span className={`text-[13px] font-extrabold font-plus-jakarta ${active ? 'text-blue-400' : 'text-slate-400'}`}>{time}</span>
+  <div className={`grid grid-cols-[80px_100px_1fr_100px] items-center gap-4 py-4 border-b border-slate-50 last:border-0`}>
+    <span className="text-[14px] font-bold text-slate-800">{time}</span>
+    <span className="text-[14px] font-bold text-slate-800">{lesson}</span>
+    <div className="flex items-center gap-3">
+      <img src={`https://ui-avatars.com/api/?name=${teacher}&background=random`} className="w-8 h-8 rounded-full" alt={teacher}/>
+      <span className="text-[14px] font-bold text-slate-800">{teacher}</span>
     </div>
-    <div className="w-28 shrink-0">
-      <h5 className="text-[15px] font-extrabold font-plus-jakarta">{lesson}</h5>
-    </div>
-    <div className="flex items-center gap-3 flex-grow">
-      <img src={`https://ui-avatars.com/api/?name=${teacher}&background=random`} className="w-8 h-8 rounded-full border-2 border-white/10" alt={teacher}/>
-      <span className={`text-[13px] font-bold ${active ? 'text-white/80' : 'text-slate-600'}`}>{teacher}</span>
-    </div>
-    <div className="shrink-0 text-right opacity-40">
-      <span className="text-[12px] font-bold tracking-tight">{location}</span>
-    </div>
-  </motion.div>
+    <span className="text-[14px] font-semibold text-slate-500 text-right truncate">{location}</span>
+  </div>
 );
 
 // ─── Main Component ──────────────────────────────────────────────────────────
@@ -217,161 +196,145 @@ const StudentDashboard = ({ user, onLogout }) => {
   const [showNotifs, setShowNotifs] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [notifications, setNotifications] = useState(NOTIFICATIONS);
+  const [tasks] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? JSON.parse(saved) : INITIAL_TASKS;
+    } catch (error) {
+      return INITIAL_TASKS;
+    }
+  });
+
+  const flatTasks = Object.entries(tasks).flatMap(([status, list]) => 
+    list.map(t => ({ ...t, status }))
+  ).sort((a, b) => {
+    // Show In Progress first
+    if (a.status === 'In Progress' && b.status !== 'In Progress') return -1;
+    if (a.status !== 'In Progress' && b.status === 'In Progress') return 1;
+    return 0;
+  });
 
   return (
-    <div className="flex flex-col gap-10 w-full animate-fade-in pb-20">
+    <div className="flex flex-col gap-10 font-plus-jakarta pb-20">
       
-      {/* Dynamic Header */}
-      <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-        <div>
-          <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight font-plus-jakarta">My Dashboard</h1>
-          <p className="text-[15px] font-bold text-slate-400 mt-2 uppercase tracking-[0.2em]">Learning Hub — Semester 2</p>
-        </div>
-        
-        <div className="flex items-center gap-4 bg-white/40 backdrop-blur-xl p-2 rounded-[2.5rem] border border-white/50 shadow-sm">
-          {/* Notifications */}
+      {/* Top Header */}
+      <div className="flex items-center justify-between gap-6">
+        <div className="flex items-center gap-4">
+          <button className="w-12 h-12 rounded-2xl bg-white shadow-sm border border-slate-100 flex items-center justify-center text-slate-800 hover:bg-slate-50 transition-all">
+            <Search className="w-5 h-5" />
+          </button>
           <div className="relative">
-            <motion.button 
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => { setShowNotifs(!showNotifs); setShowProfile(false); }}
-              className={`p-4 rounded-full transition-all relative ${showNotifs ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'text-slate-600 hover:bg-white/80'}`}
-            >
-              <Bell className="w-5 h-5 transition-transform group-hover:rotate-12" />
-              {notifications.some(n => n.unread) && (
-                <span className="absolute top-3 right-3 w-3 h-3 bg-rose-500 rounded-full border-2 border-white ring-2 ring-rose-500/20" />
-              )}
-            </motion.button>
-            <AnimatePresence>
-              {showNotifs && (
-                <NotificationDropdown 
-                  notifications={notifications} 
-                  setNotifications={setNotifications} 
-                  onClose={() => setShowNotifs(false)} 
-                />
-              )}
-            </AnimatePresence>
+             <button 
+                onClick={() => setShowNotifs(!showNotifs)}
+                className="w-12 h-12 rounded-2xl bg-[#a78bfa] text-white flex items-center justify-center shadow-lg shadow-purple-500/20 hover:bg-purple-500 transition-all"
+             >
+                <Bell className="w-5 h-5 fill-current" />
+                <span className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 border-2 border-white rounded-full" />
+             </button>
+             <AnimatePresence>
+                {showNotifs && (
+                  <NotificationDropdown 
+                    onClose={() => setShowNotifs(false)} 
+                    notifications={notifications} 
+                    setNotifications={setNotifications}
+                  />
+                )}
+             </AnimatePresence>
           </div>
-          
-          <div className="h-10 w-px bg-slate-200/50" />
-          
-          {/* Profile User */}
+        </div>
+
+        <div className="flex items-center gap-4">
           <div className="relative">
-            <motion.button 
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => { setShowProfile(!showProfile); setShowNotifs(false); }}
-              className="flex items-center gap-4 pl-2 pr-6 py-2 rounded-full transition-all group"
+            <button 
+              onClick={() => setShowProfile(!showProfile)}
+              className="flex items-center gap-4 px-4 py-2 bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all group"
             >
-              <div className="relative">
-                <img 
-                  src={`https://ui-avatars.com/api/?name=${user?.first_name}+${user?.last_name}&background=0f172a&color=fff`} 
-                  className="w-12 h-12 rounded-full shadow-lg border-2 border-white group-hover:border-blue-500/20 transition-all"
-                  alt="Avatar"
-                />
-                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full shadow-sm" />
-              </div>
-              <div className="text-left hidden sm:block">
-                <p className="text-[14px] font-extrabold text-slate-900 leading-none">{user?.first_name}</p>
-                <p className="text-[11px] font-bold text-slate-400 mt-1 uppercase tracking-widest">Year 9A</p>
+              <img 
+                src={`https://ui-avatars.com/api/?name=${user?.user?.first_name || user?.first_name || 'Kate'}+${user?.user?.last_name || user?.last_name || 'Malone'}&background=0f172a&color=fff`} 
+                className="w-10 h-10 rounded-xl border-2 border-white"
+                alt="Avatar"
+              />
+              <div className="text-left">
+                <p className="text-[14px] font-bold text-slate-900 leading-none">{user?.user?.first_name || user?.first_name || 'Kate'} {user?.user?.last_name || user?.last_name || 'Malone'}</p>
+                <p className="text-[11px] font-bold text-slate-400 mt-1 uppercase tracking-tight">Class 9A</p>
               </div>
               <ChevronDown className={`w-4 h-4 text-slate-300 transition-transform ${showProfile ? 'rotate-180' : ''}`} />
-            </motion.button>
+            </button>
             <AnimatePresence>
               {showProfile && <ProfileDropdown user={user} onLogout={onLogout} />}
             </AnimatePresence>
           </div>
+          <button className="w-12 h-12 rounded-2xl bg-white shadow-sm border border-slate-100 flex items-center justify-center text-slate-800 hover:bg-slate-50 transition-all">
+             <MoreHorizontal className="w-5 h-5" />
+          </button>
         </div>
       </div>
 
-      {/* Main Grid Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+      {/* Main Content Multi-Column Layout */}
+      <div className="grid grid-cols-12 gap-10">
         
-        {/* Left Section: Progress & Tasks */}
-        <div className="lg:col-span-8 flex flex-col gap-10">
-          
-          {/* Featured Task Search / Filter */}
-          <div className="bg-white/80 backdrop-blur-2xl p-8 rounded-[3rem] border border-white/60 shadow-xl shadow-blue-500/5">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-              <div className="relative w-full md:w-80">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input 
-                  type="text" 
-                  placeholder="Seach your tasks..." 
-                  className="w-full bg-slate-50/50 border border-slate-100 rounded-2xl py-3 pl-12 pr-4 text-[14px] focus:outline-none focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500/20 transition-all"
-                />
-              </div>
-              <div className="flex items-center gap-2 p-1 bg-slate-50 rounded-[1.5rem]">
-                {['All Tasks', 'Ongoing', 'Completed'].map((tab, i) => (
-                  <button key={tab} className={`px-6 py-2 rounded-2xl text-[12px] font-bold transition-all ${i === 0 ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>{tab}</button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {TASKS.map(task => <TaskCard key={task.id} {...task} />)}
-          </div>
-          
-          <motion.button 
-            whileHover={{ scale: 1.01 }}
-            className="w-full py-6 rounded-[2.5rem] bg-slate-900 text-white font-bold text-[14px] uppercase tracking-[0.3em] flex items-center justify-center gap-3 shadow-2xl shadow-slate-900/10 hover:bg-slate-800 transition-all"
-          >
-            Explore all activities <ArrowUpRight className="w-5 h-5" />
-          </motion.button>
-        </div>
-
-        {/* Right Section: Schedule & Performance */}
-        <div className="lg:col-span-4 flex flex-col gap-10">
-          
-          {/* My Schedule Sidebar */}
-          <div className="flex flex-col gap-6">
-            <div className="flex justify-between items-center px-4">
-              <h3 className="text-[20px] font-extrabold font-plus-jakarta text-slate-900">My Schedule</h3>
-              <button className="w-10 h-10 rounded-2xl bg-white border border-slate-100 flex items-center justify-center hover:bg-slate-50 transition-all">
-                <Plus className="w-5 h-5 text-slate-400" />
-              </button>
+        {/* Left Column: My Tasks */}
+        <div className="col-span-12 lg:col-span-5 flex flex-col gap-6">
+          <div className="bg-white/40 rounded-[3rem] p-6 border border-white shadow-sm flex flex-col h-full">
+            <div className="flex justify-between items-center mb-8 px-2">
+              <h3 className="text-[1.8rem] font-bold text-slate-800">My tasks</h3>
             </div>
             
-            <div className="bg-white/40 border border-white/60 p-4 rounded-[3rem] shadow-sm flex flex-col gap-2">
-              {SCHEDULE.map((item, i) => <ScheduleItem key={i} {...item} />)}
-            </div>
-          </div>
-
-          {/* Quick Insights Card */}
-          <div className="bg-gradient-to-br from-indigo-600 to-blue-700 rounded-[3rem] p-10 text-white relative overflow-hidden group">
-            <TrendingUp className="absolute -bottom-10 -right-10 w-64 h-64 text-white/5 group-hover:text-white/10 transition-all rotate-12" />
-            <h3 className="text-2xl font-extrabold mb-2 relative z-10 font-plus-jakarta">Performance</h3>
-            <p className="text-white/60 text-[14px] font-bold mb-8 relative z-10">Your average this week is higher than last week. Keep it up! 🚀</p>
-            <div className="flex items-end gap-1 h-24 mb-6 relative z-10">
-              {[40, 70, 45, 90, 65, 80, 50].map((h, i) => (
-                <motion.div 
-                  key={i} 
-                  initial={{ height: 0 }}
-                  animate={{ height: `${h}%` }}
-                  transition={{ delay: i * 0.1, duration: 1 }}
-                  className="flex-1 bg-white/20 rounded-t-lg group-hover:bg-white/40 transition-colors"
-                />
+            <div className="flex gap-2 mb-8 px-2 overflow-x-auto no-scrollbar">
+              {['All task', 'To do', 'In progress', 'Done'].map((tab, i) => (
+                <button key={tab} className={`px-5 py-2.5 rounded-full text-[13px] font-bold transition-all whitespace-nowrap ${i === 0 ? 'bg-[#0f172a] text-white shadow-md' : 'text-slate-500 bg-white border border-slate-100 hover:border-slate-200'}`}>
+                  {tab}
+                </button>
               ))}
             </div>
-            <button className="w-full py-4 bg-white/10 backdrop-blur-md rounded-2xl text-[13px] font-bold uppercase tracking-widest hover:bg-white/20 transition-all relative z-10">
-              Full Report
+
+            <div className="flex flex-col gap-4">
+              {flatTasks.slice(0, 5).map(task => <TaskCard key={`${task.id}-${task.status}`} {...task} />)}
+            </div>
+
+            <button className="mt-8 py-4 bg-white border border-slate-100 rounded-3xl text-[14px] font-bold text-slate-500 hover:text-slate-600 transition-all">
+              View all tasks
             </button>
+          </div>
+        </div>
+
+        {/* Right Column: Notes & Schedule */}
+        <div className="col-span-12 lg:col-span-7 flex flex-col gap-10">
+          
+          {/* My Notes Section */}
+          <div className="bg-white/40 rounded-[3rem] p-8 border border-white shadow-sm">
+             <div className="flex justify-between items-center mb-6">
+                <h3 className="text-[1.8rem] font-bold text-slate-800">My notes</h3>
+             </div>
+             <div className="flex gap-6 overflow-x-auto no-scrollbar">
+                {NOTES.map(note => <NoteCard key={note.id} {...note} />)}
+             </div>
+          </div>
+
+          {/* My Schedule Section */}
+          <div className="bg-white/40 rounded-[3rem] p-8 border border-white shadow-sm">
+             <div className="flex justify-between items-center mb-8">
+                <h3 className="text-[1.8rem] font-bold text-slate-800">My schedule</h3>
+                <button className="px-5 py-2.5 rounded-full bg-white border border-slate-100 text-[14px] font-bold text-slate-800 flex items-center gap-2">
+                  May 14, Mon <ChevronDown className="w-4 h-4 text-slate-400" />
+                </button>
+             </div>
+             
+             <div className="flex flex-col">
+                <div className="grid grid-cols-[80px_100px_1fr_100px] gap-4 mb-4 text-[12px] font-bold text-slate-500 uppercase tracking-widest px-1">
+                   <span>Time</span>
+                   <span>Lesson</span>
+                   <span>Teacher</span>
+                   <span className="text-right">Location</span>
+                </div>
+                <div className="flex flex-col">
+                  {SCHEDULE.map((item, i) => <ScheduleItem key={i} {...item} />)}
+                </div>
+             </div>
           </div>
 
         </div>
 
-      </div>
-
-      {/* Horizontal Notes Section */}
-      <div className="mt-10 flex flex-col gap-6">
-        <div className="flex justify-between items-center px-6">
-          <h3 className="text-[20px] font-extrabold font-plus-jakarta text-slate-900">Recent Notes</h3>
-          <button className="text-blue-600 font-bold text-[14px] hover:underline">View All</button>
-        </div>
-        <div className="flex gap-8 overflow-x-auto pb-8 snap-x snap-mandatory custom-scrollbar px-2">
-          {NOTES.map(note => <NoteCard key={note.id} {...note} />)}
-        </div>
       </div>
 
     </div>

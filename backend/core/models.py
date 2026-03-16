@@ -1,0 +1,356 @@
+from django.db import models
+from users.models import User
+from enquiries.models import Enquiry
+
+class Student(models.Model):
+    STATUS_CHOICES = (
+        ('Active', 'Active'),
+        ('Inactive', 'Inactive'),
+        ('Graduate', 'Graduate'),
+    )
+    
+    full_name = models.CharField(max_length=100)
+    class_name = models.CharField(max_length=50, blank=True, null=True)
+    grade = models.CharField(max_length=50)
+    syllabus = models.CharField(max_length=100, blank=True, null=True)
+    academic_year = models.CharField(max_length=50, blank=True, null=True)
+    medium_of_communication = models.JSONField(default=list, blank=True) # e.g. ["English", "Malayalam"]
+    publication = models.CharField(max_length=100, blank=True, null=True)
+    contact_method = models.JSONField(default=list, blank=True)
+    location = models.CharField(max_length=100)
+    school = models.CharField(max_length=200, blank=True, null=True)
+    parent_remarks = models.TextField(max_length=500, blank=True, null=True)
+    phone_number = models.CharField(max_length=20, blank=True, null=True)
+    email = models.EmailField(blank=True, null=True)
+    timezone = models.CharField(max_length=50, blank=True, null=True)
+    country = models.CharField(max_length=100)
+    whatsapp_group = models.CharField(max_length=100, blank=True, null=True)
+    contact_via = models.CharField(max_length=100, blank=True, null=True)
+
+    parent_name = models.CharField(max_length=100, blank=True, null=True)
+    tutor = models.CharField(max_length=100, blank=True, null=True)
+
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Active')
+
+    enquiry_ref = models.ForeignKey(Enquiry, on_delete=models.SET_NULL, null=True, blank=True, related_name='students')
+    user = models.OneToOneField(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='student_core_profile')
+    raw_password = models.CharField(max_length=128, blank=True, null=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_students')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.full_name
+
+class Tutor(models.Model):
+    STATUS_CHOICES = (
+        ('Active', 'Active'),
+        ('Inactive', 'Inactive'),
+        ('Scheduled Leave', 'Scheduled Leave'),
+        ('Leave', 'Leave'),
+        ('Resigned', 'Resigned'),
+    )
+    
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='tutor_profile')
+    contact_number = models.CharField(max_length=20)
+    address = models.TextField(blank=True, null=True)
+    date_of_birth = models.DateField(blank=True, null=True)
+    gender = models.CharField(max_length=20, blank=True, null=True)
+    educational_qualifications = models.JSONField(default=list, blank=True)
+    teaching_experience_months = models.IntegerField(blank=True, null=True)
+    
+    # Store complex arrays of objects as JSON for simplicity, or we could create related models
+    subject_expertise = models.JSONField(default=list, blank=True) # [{subject: String, proficiency: String}]
+    classes_can_teach = models.JSONField(default=list, blank=True)
+    syllabus_expertise = models.JSONField(default=list, blank=True) # [{syllabus: String, experienceYears: String}]
+    languages_spoken = models.JSONField(default=list, blank=True) # [{language: String, proficiency: String}]
+    
+    google_meet_link = models.URLField(blank=True, null=True)
+    network_connectivity = models.CharField(max_length=100, blank=True, null=True)
+    device = models.CharField(max_length=100, blank=True, null=True)
+    board_type = models.CharField(max_length=100, blank=True, null=True)
+    
+    bank_details = models.JSONField(default=dict, blank=True)
+    availability = models.JSONField(default=list, blank=True) # [{dayOfWeek: String, startTime: String, ...}]
+    
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='Active')
+    remarks = models.JSONField(default=list, blank=True) # [{date: Date, comment: String, severity: String}]
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.user.name
+
+class Plan(models.Model):
+    PLAN_TYPE_CHOICES = (
+        ('One-on-One', 'One-on-One'), ('Twin', 'Twin'), 
+        ('Batch', 'Batch'), ('Revision', 'Revision')
+    )
+    STATUS_CHOICES = (
+        ('New', 'New'), ('Active', 'Active'), ('Pending Renewal', 'Pending Renewal'), 
+        ('Inactive', 'Inactive'), ('Course Completion', 'Course Completion'), 
+        ('Scheduled Leave (Normal)', 'Scheduled Leave (Normal)'), 
+        ('Scheduled Leave (Annual)', 'Scheduled Leave (Annual)'), 
+        ('Discontinuation', 'Discontinuation'), ('Tutor Change', 'Tutor Change')
+    )
+
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='plans')
+    tutor = models.ForeignKey(Tutor, on_delete=models.CASCADE, related_name='plans')
+    subject = models.CharField(max_length=100)
+    plan_type = models.CharField(max_length=50, choices=PLAN_TYPE_CHOICES)
+    sessions_per_week = models.IntegerField()
+    session_duration = models.FloatField() # in hours
+    
+    schedule_pattern = models.JSONField(default=list, blank=True) # [{dayOfWeek: String, time: String}]
+    
+    batch_ref = models.CharField(max_length=100, blank=True, null=True) # Mock ObjectId as string for now
+    twin_student = models.ForeignKey(Student, on_delete=models.SET_NULL, null=True, blank=True, related_name='twin_plans')
+    
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='New')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.subject} Plan for {self.student.full_name}"
+
+class SubPlan(models.Model):
+    PAYMENT_STATUS_CHOICES = (('Pending', 'Pending'), ('Paid', 'Paid'))
+
+    plan = models.ForeignKey(Plan, related_name='sub_plans', on_delete=models.CASCADE)
+    cycle_number = models.IntegerField()
+    start_date = models.DateField()
+    end_date = models.DateField()
+    total_sessions = models.IntegerField()
+    fee_per_session = models.DecimalField(max_digits=10, decimal_places=2)
+    total_fee = models.DecimalField(max_digits=10, decimal_places=2)
+    one_time_fees = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    amount_paid = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='Pending')
+
+class Session(models.Model):
+    STATUS_CHOICES = (
+        ('Scheduled', 'Scheduled'), ('Completed', 'Completed'), ('Rescheduled', 'Rescheduled'), 
+        ('Rescheduled: New', 'Rescheduled: New'), ('Cancelled', 'Cancelled'), ('Disputed', 'Disputed')
+    )
+    
+    plan = models.ForeignKey(Plan, on_delete=models.CASCADE, related_name='sessions', null=True, blank=True)
+    sub_plan = models.ForeignKey(SubPlan, on_delete=models.SET_NULL, null=True, blank=True)
+    tutor = models.ForeignKey(Tutor, on_delete=models.CASCADE)
+    student_refs = models.ManyToManyField(Student, blank=True) # Array for batched sessions
+    
+    subject = models.CharField(max_length=100)
+    scheduled_date = models.DateField()
+    scheduled_time = models.CharField(max_length=50) # "HH:MM"
+    duration_hours = models.FloatField()
+    google_meet_link = models.URLField(blank=True, null=True)
+    
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='Scheduled')
+    attendance = models.JSONField(default=list, blank=True) # [{studentRef: ID, status: 'Present'/'Absent'}]
+    
+    homework_given = models.BooleanField(default=False)
+    homework_notes = models.TextField(blank=True, null=True)
+    
+    original_session = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True)
+    managers_remarks = models.JSONField(default=list, blank=True) # [{author_id, category, severity, comment, date}]
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+class Payment(models.Model):
+    STATUS_CHOICES = (('Verified', 'Verified'), ('Pending', 'Pending'), ('Failed', 'Failed'))
+
+    plan = models.ForeignKey(Plan, on_delete=models.CASCADE, related_name='payments')
+    sub_plan = models.ForeignKey(SubPlan, on_delete=models.CASCADE)
+    student = models.ForeignKey(Student, on_delete=models.CASCADE)
+
+    amount_due = models.DecimalField(max_digits=10, decimal_places=2)
+    amount_received = models.DecimalField(max_digits=10, decimal_places=2)
+
+    bank_account_credited = models.CharField(max_length=100)
+
+    payment_date = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Verified')
+
+    verified_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    remarks = models.TextField(blank=True, null=True)
+
+    payment_method = models.CharField(max_length=50, blank=True, null=True)
+    receipt_id = models.CharField(max_length=100, blank=True, null=True)
+    is_one_time_fee_included = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+class Income(models.Model):
+    PAYMENT_MODE_CHOICES = (
+        ('Cash', 'Cash'),
+        ('Bank Transfer', 'Bank Transfer'),
+        ('Online', 'Online'),
+    )
+    VERIFICATION_STATUS_CHOICES = (
+        ('Pending', 'Pending'),
+        ('Verified', 'Verified'),
+        ('Rejected', 'Rejected'),
+    )
+    PLAN_TYPE_CHOICES = (
+        ('Cycle 1', 'Cycle 1'),
+        ('Cycle 2', 'Cycle 2'),
+        ('Cycle 3', 'Cycle 3'),
+        ('Admission Fee', 'Admission Fee'),
+        ('One-Time', 'One-Time'),
+    )
+
+    student = models.ForeignKey(Student, on_delete=models.SET_NULL, null=True, blank=True, related_name='income_records')
+    student_name = models.CharField(max_length=100, blank=True)  # Denormalized for cash deals
+    plan_type = models.CharField(max_length=50, choices=PLAN_TYPE_CHOICES, default='Cycle 1')
+    amount_received = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_mode = models.CharField(max_length=30, choices=PAYMENT_MODE_CHOICES, default='Bank Transfer')
+    service_provided = models.CharField(max_length=200, blank=True, null=True)
+    verification_status = models.CharField(max_length=20, choices=VERIFICATION_STATUS_CHOICES, default='Pending')
+    verified_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='verified_incomes')
+    verified_at = models.DateTimeField(null=True, blank=True)
+    remarks = models.TextField(blank=True, null=True)
+    receipt_id = models.CharField(max_length=50, blank=True, null=True)
+    date = models.DateField(null=True, blank=True)
+    # Audit trail as JSON: [{user_id, action, old_status, new_status, timestamp}]
+    audit_log = models.JSONField(default=list, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.student_name} - {self.amount_received} ({self.verification_status})"
+
+
+class Expense(models.Model):
+    CATEGORY_CHOICES = (
+        ('Tutor Salary', 'Tutor Salary'),
+        ('Rent', 'Rent'),
+        ('Utilities', 'Utilities'),
+        ('Marketing', 'Marketing'),
+        ('Software', 'Software'),
+        ('Office Supplies', 'Office Supplies'),
+        ('Other', 'Other'),
+    )
+
+    category = models.CharField(max_length=50, choices=CATEGORY_CHOICES)
+    payee_name = models.CharField(max_length=100)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_date = models.DateField()
+    receipt_attachment_url = models.URLField(blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+    # Reference to payroll entry if this was auto-created by mark_paid
+    payroll_ref = models.ForeignKey('TutorPayroll', on_delete=models.SET_NULL, null=True, blank=True, related_name='expense_entry')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    # Audit trail
+    audit_log = models.JSONField(default=list, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.category} - {self.payee_name}: {self.amount}"
+
+
+class TutorPayroll(models.Model):
+    STATUS_CHOICES = (
+        ('Pending', 'Pending'),
+        ('Paid', 'Paid'),
+    )
+
+    tutor = models.ForeignKey(Tutor, on_delete=models.CASCADE, related_name='payroll_records')
+    tutor_name = models.CharField(max_length=100, blank=True)  # Denormalized
+    month = models.CharField(max_length=20)  # e.g. "March 2026"
+    base_salary = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    hourly_rate = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    hours_logged = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+    payment_status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
+    paid_at = models.DateTimeField(null=True, blank=True)
+    paid_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def calculated_pay(self):
+        """Formula: base_salary + (hourly_rate * hours_logged)"""
+        return float(self.base_salary) + (float(self.hourly_rate) * float(self.hours_logged))
+
+    def __str__(self):
+        return f"{self.tutor_name} - {self.month}: {self.calculated_pay}"
+
+
+
+class ExamSchedule(models.Model):
+    CATEGORY_CHOICES = (
+        ('Internal', 'Internal'),
+        ('Mock', 'Mock'),
+        ('School/Board', 'School/Board'),
+    )
+    STATUS_CHOICES = (
+        ('Scheduled', 'Scheduled'),
+        ('Ongoing', 'Ongoing'),
+        ('Completed', 'Completed'),
+        ('Evaluated', 'Evaluated'),
+        ('Postponed', 'Postponed'),
+    )
+
+    name = models.CharField(max_length=150)
+    class_name = models.CharField(max_length=50, blank=True, null=True)
+    category = models.CharField(max_length=30, choices=CATEGORY_CHOICES)
+    date = models.DateField()
+    time = models.CharField(max_length=50) # "HH:MM" format
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='exams', null=True, blank=True)
+    plan = models.ForeignKey(Plan, on_delete=models.SET_NULL, null=True, blank=True, related_name='exams')
+    syllabus = models.TextField(blank=True, null=True)
+    
+    # Enhanced Configuration
+    duration = models.IntegerField(default=60, help_text="Duration in minutes")
+    buffer_time = models.IntegerField(default=0, help_text="Buffer time in minutes")
+    auto_submit = models.BooleanField(default=True)
+    timer_expiry_action = models.CharField(
+        max_length=20, 
+        choices=[('AUTO_SUBMIT', 'Auto-submit'), ('ALLOW_OVERTIME', 'Allow Overtime')],
+        default='AUTO_SUBMIT'
+    )
+    mixed_mode = models.BooleanField(default=False)
+    tutor = models.ForeignKey(Tutor, on_delete=models.SET_NULL, null=True, blank=True, related_name='proctored_exams')
+    
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='Scheduled')
+    
+    # Results fields
+    marks_obtained = models.FloatField(null=True, blank=True)
+    total_marks = models.FloatField(null=True, blank=True)
+    feedback = models.TextField(blank=True, null=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} - {self.date}"
+
+class ExamQuestion(models.Model):
+    QUESTION_TYPES = [
+        ('MCQ', 'Multiple Choice'),
+        ('SHORT', 'Short Test'),
+        ('LONG', 'Long Test'),
+        ('YES_NO', 'Yes/No'),
+    ]
+    
+    exam = models.ForeignKey(ExamSchedule, related_name='questions', on_delete=models.CASCADE)
+    question_type = models.CharField(max_length=10, choices=QUESTION_TYPES)
+    text = models.TextField()
+    marks = models.IntegerField(default=1)
+    order = models.IntegerField(default=0)
+    payload = models.JSONField(default=dict, help_text="Stores options, correct answers, etc.")
+    media = models.FileField(upload_to='exam_media/', blank=True, null=True)
+
+    class Meta:
+        ordering = ['order']
+
+    def __str__(self):
+        return f"{self.exam.name} - Q{self.order} ({self.question_type})"
