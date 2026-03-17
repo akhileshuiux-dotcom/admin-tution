@@ -1,8 +1,5 @@
 Django>=4.2
 djangorestframework
-djangorestframework-simplejwt
 django-cors-headers
-psycopg2-binary
-python-dotenv
-dj-database-url
 django-filter
+psycopg2-binary # In case they use Postgres later, but sqlite is default

@@ -1,8 +1,8 @@
 from django.db import models
-from django.conf import settings
+from django.contrib.auth.models import User
 
 class Student(models.Model):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='student_profile')
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='student_profile')
     student_id = models.CharField(max_length=20, unique=True)
     grade = models.CharField(max_length=10)
     enrolled_date = models.DateField(auto_now_add=True)
@@ -13,7 +13,7 @@ class Student(models.Model):
         return f"{self.user.get_full_name()} ({self.student_id})"
 
 class Teacher(models.Model):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='teacher_profile')
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='teacher_profile')
     employee_id = models.CharField(max_length=20, unique=True)
     bio = models.TextField(blank=True)
     specialization = models.CharField(max_length=100)

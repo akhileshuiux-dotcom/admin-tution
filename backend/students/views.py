@@ -15,22 +15,9 @@ from rest_framework.views import APIView
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login_view(request):
-    identity = request.data.get('username') or request.data.get('email')
+    username = request.data.get('username')
     password = request.data.get('password')
-    
-    user = None
-    if identity:
-        # Try as email first (modern student login)
-        if '@' in identity:
-            from users.models import User
-            user_obj = User.objects.filter(email=identity).first()
-            if user_obj:
-                user = authenticate(username=user_obj.username, password=password)
-        
-        # Fallback to username
-        if not user:
-            user = authenticate(username=identity, password=password)
-            
+    user = authenticate(username=username, password=password)
     if user:
         login(request, user)
         serializer = UserSerializer(user)
