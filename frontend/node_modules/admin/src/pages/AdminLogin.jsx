@@ -45,6 +45,13 @@ const AdminLogin = () => {
         <div className="login-layout-wrapper">
             <div className="login-side-form">
                 <div className="login-form-container">
+                    <div className="flex items-center gap-2 mb-8">
+                        <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center">
+                            <span className="text-white font-bold text-xl">A</span>
+                        </div>
+                        <span className="text-[24px] font-bold text-white tracking-tight">EduWay</span>
+                    </div>
+
                     <h2 className="login-heading">Admin Login</h2>
                     <p className="login-subtitle">Enter your tutor account credentials</p>
 
@@ -91,16 +98,21 @@ const AdminLogin = () => {
 
                         <button
                             type="submit"
-                            className="btn-login-v2 bg-indigo-600 hover:bg-indigo-700 shadow-xl shadow-indigo-200"
+                            className="btn-login-v2 bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-900/30"
                             disabled={loading}
                         >
                             {loading ? 'Authenticating...' : 'Secure Login'}
                         </button>
                     </form>
 
-                    <div className="signup-prompt">
-                        <span>Are you a student?</span>
-                        <button onClick={() => navigate('/login/student')} className="text-indigo-600 font-bold ml-1">Student Login</button>
+                    <div className="flex flex-col gap-2 mt-8">
+                        <div className="flex justify-between items-center text-[0.85rem]">
+                            <span className="text-[#6a6d7a]">Switch Portal:</span>
+                            <div className="flex gap-4">
+                                <button onClick={() => navigate('/login/student')} className="text-emerald-500 hover:text-emerald-400 font-semibold transition-colors">Student</button>
+                                <button onClick={() => navigate('/login/teacher')} className="text-blue-500 hover:text-blue-400 font-semibold transition-colors">Teacher</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

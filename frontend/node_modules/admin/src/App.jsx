@@ -3,6 +3,7 @@ import MainLayout from './layouts/MainLayout';
 import AuthLayout from './layouts/AuthLayout';
 import StudentLogin from './pages/StudentLogin';
 import AdminLogin from './pages/AdminLogin';
+import TeacherLogin from './pages/TeacherLogin';
 import Dashboard from './pages/Dashboard';
 import Enquiries from './pages/Enquiries';
 import Students from './pages/Students';
@@ -27,6 +28,7 @@ function App() {
           <Route element={<AuthLayout />}>
             <Route path="/login/student" element={<StudentLogin />} />
             <Route path="/login/admin" element={<AdminLogin />} />
+            <Route path="/login/teacher" element={<TeacherLogin />} />
             <Route path="/login" element={<Navigate to="/login/student" replace />} />
           </Route>
 
@@ -72,7 +74,9 @@ function RoleRedirect() {
   if (!stored) return <Navigate to="/login/student" replace />;
   try {
     const user = JSON.parse(stored);
-    if (user?.role?.toLowerCase() === 'student') return <Navigate to="/student" replace />;
+    const role = user?.role?.toLowerCase();
+    if (role === 'student') return <Navigate to="/student" replace />;
+    if (role === 'tutor' || role === 'teacher') return <Navigate to="/dashboard" replace />;
     return <Navigate to="/dashboard" replace />;
   } catch {
     return <Navigate to="/login/student" replace />;

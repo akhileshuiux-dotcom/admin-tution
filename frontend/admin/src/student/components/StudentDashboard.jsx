@@ -4,8 +4,9 @@ import {
   Search, Bell, MoreHorizontal, ChevronDown, X, 
   Settings, LogOut, User, HelpCircle, BookOpen, 
   CheckCheck, Clock, MessageSquare, ArrowUpRight,
-  TrendingUp, Calendar, Layout, FileText, Plus
+  TrendingUp, Calendar, Layout, FileText, Plus, PlayCircle, CheckCircle, SlidersHorizontal
 } from 'lucide-react';
+import TaskDetailModal from './TaskDetailModal';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 const NOTIFICATIONS = [
@@ -30,7 +31,7 @@ const INITIAL_TASKS = {
 };
 
 const NOTES = [
-  { id: 1, title: "Math conspect", date: "May 05, 2025", content: "A linear equation is an equation of the form: ax+b=cax+b = cax+b=c, where xxx is the variable, aaa, bbb, and ccc are constants, and a≠0a \neq 0a=0.", color: "bg-[#bbf7d0]" },
+  { id: 1, title: "Math conspect", date: "May 05, 2025", content: "A linear equation is an equation of the form: ax+b=c, where x is the variable, a, b, and c are constants, and a ≠ 0.", color: "bg-[#bbf7d0]" },
   { id: 2, title: "Biology conspect", date: "Apr 29, 2025", content: "A cell is the basic structural, functional, and biological unit of all living organisms. It is the smallest unit capable of performing life functions.", color: "bg-[#a5b4fc]" },
 ];
 
@@ -158,8 +159,8 @@ const TaskCard = ({ title, subject, due, status, progress }) => (
       <div className="flex items-center gap-1 text-slate-500">
         <span className="text-[11px] font-semibold">{due}</span>
       </div>
-      <div className="flex items-center gap-1 text-slate-500">
-        <span className="text-[11px] font-semibold">{progress}% complete</span>
+      <div className="flex items-center gap-1 text-slate-500 text-right">
+        <span className="text-[11px] font-semibold">{progress || 0}% complete</span>
       </div>
     </div>
   </div>
@@ -169,9 +170,6 @@ const NoteCard = ({ title, date, content, color }) => (
   <div className={`${color} rounded-[2rem] p-6 min-w-[300px] flex-1 flex flex-col`}>
     <div className="flex justify-between items-center mb-6">
       <h4 className="text-[18px] font-bold text-slate-800">{title}</h4>
-      <button className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center">
-        <MoreHorizontal className="w-4 h-4 text-slate-600" />
-      </button>
     </div>
     <p className="text-[14px] font-medium text-slate-800 mb-10 leading-relaxed flex-grow">{content}</p>
     <span className="text-[12px] font-bold text-slate-500">{date}</span>
@@ -195,8 +193,10 @@ const ScheduleItem = ({ time, lesson, teacher, location, active }) => (
 const StudentDashboard = ({ user, onLogout }) => {
   const [showNotifs, setShowNotifs] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showMoreHeader, setShowMoreHeader] = useState(false);
+  const [activeNoteMenu, setActiveNoteMenu] = useState(null);
   const [notifications, setNotifications] = useState(NOTIFICATIONS);
-  const [tasks] = useState(() => {
+  const [tasks, setTasks] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       return saved ? JSON.parse(saved) : INITIAL_TASKS;
@@ -204,6 +204,52 @@ const StudentDashboard = ({ user, onLogout }) => {
       return INITIAL_TASKS;
     }
   });
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+  }, [tasks]);
+
+  // Click outside to close menus
+  useEffect(() => {
+    const handleClick = () => {
+      setShowMoreHeader(false);
+      setActiveNoteMenu(null);
+      setActiveTaskMenu(null);
+    };
+    window.addEventListener('click', handleClick);
+    return () => window.removeEventListener('click', handleClick);
+  }, []);
+  const [activeTaskMenu, setActiveTaskMenu] = useState(null);
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [activeTab, setActiveTab] = useState('All task');
+
+  const handleTaskStart = (task) => {
+    setTasks(prev => {
+      const todo = prev['To Do'].filter(t => t.id !== task.id);
+      const inProg = [...prev['In Progress'], { ...task, progress: 0 }];
+      return { ...prev, 'To Do': todo, 'In Progress': inProg };
+    });
+    setSelectedTask(null);
+  };
+
+  const handleTaskComplete = (task) => {
+    setTasks(prev => {
+      const inProg = prev['In Progress'].filter(t => t.id !== task.id);
+      const done = [...prev['Done'], { ...task, submitted: true }];
+      return { ...prev, 'In Progress': inProg, 'Done': done };
+    });
+    setSelectedTask(null);
+  };
+
+  const handleTaskProgressUpdate = (task, newProgress) => {
+    setTasks(prev => ({
+      ...prev,
+      'In Progress': prev['In Progress'].map(t =>
+        t.id === task.id ? { ...t, progress: newProgress } : t
+      ),
+    }));
+    setSelectedTask(null);
+  };
 
   const flatTasks = Object.entries(tasks).flatMap(([status, list]) => 
     list.map(t => ({ ...t, status }))
@@ -215,11 +261,79 @@ const StudentDashboard = ({ user, onLogout }) => {
   });
 
   return (
-    <div className="flex flex-col gap-10 font-plus-jakarta pb-20">
+    <div className="flex flex-col gap-10 font-plus-jakarta pb-20 relative">
+      
+      {/* Background Ornaments to "feel the gap" - Enhanced Visibility */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="absolute top-[-10%] left-[-5%] w-[600px] h-[600px] bg-emerald-100 rounded-full blur-[150px] opacity-70" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[700px] h-[700px] bg-purple-100 rounded-full blur-[180px] opacity-70" />
+        <div className="absolute top-[30%] right-[-5%] w-[400px] h-[400px] bg-blue-100 rounded-full blur-[120px] opacity-50" />
+        
+        {/* Floating Decorative Boxes (Actual Boxes) */}
+        {[...Array(8)].map((_, i) => (
+          <motion.div
+            key={`box-${i}`}
+            initial={{ rotate: Math.random() * 360, opacity: 0 }}
+            animate={{ 
+              y: [0, Math.random() * 60 - 30, 0],
+              x: [0, Math.random() * 40 - 20, 0],
+              rotate: [0, 10, -10, 0],
+              opacity: 0.4
+            }}
+            transition={{ 
+              duration: 10 + Math.random() * 10, 
+              repeat: Infinity,
+              delay: Math.random() * 5
+            }}
+            className="absolute rounded-3xl bg-white shadow-[0_8px_32px_rgba(0,0,0,0.03)] border border-white/50 backdrop-blur-sm"
+            style={{
+              width: Math.random() * 100 + 50,
+              height: Math.random() * 100 + 50,
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+            }}
+          />
+        ))}
+
+        {/* Decorative Floating Dots */}
+        {[...Array(15)].map((_, i) => (
+          <motion.div
+            key={`dot-${i}`}
+            animate={{ 
+              y: [0, Math.random() * 40 - 20, 0],
+              opacity: [0.2, 0.5, 0.2]
+            }}
+            transition={{ 
+              duration: 5 + Math.random() * 5, 
+              repeat: Infinity,
+              delay: Math.random() * 5
+            }}
+            className="absolute rounded-full bg-slate-300"
+            style={{
+              width: Math.random() * 12 + 6,
+              height: Math.random() * 12 + 6,
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="relative z-10 flex flex-col gap-10">
       
       {/* Top Header */}
-      <div className="flex items-center justify-between gap-6">
-        <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between gap-6 mb-4">
+        <div className="flex items-center gap-8">
+          <div className="flex items-center gap-3">
+             <div className="w-12 h-12 bg-[#22c55e] rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                <span className="text-white font-black text-2xl">A</span>
+             </div>
+             <span className="text-[28px] font-black text-slate-900 tracking-tight">EduWay</span>
+          </div>
+
+          <div className="h-10 w-px bg-slate-200" />
+          
+          <div className="flex items-center gap-4">
           <button className="w-12 h-12 rounded-2xl bg-white shadow-sm border border-slate-100 flex items-center justify-center text-slate-800 hover:bg-slate-50 transition-all">
             <Search className="w-5 h-5" />
           </button>
@@ -242,8 +356,9 @@ const StudentDashboard = ({ user, onLogout }) => {
              </AnimatePresence>
           </div>
         </div>
+      </div>
 
-        <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4">
           <div className="relative">
             <button 
               onClick={() => setShowProfile(!showProfile)}
@@ -264,32 +379,123 @@ const StudentDashboard = ({ user, onLogout }) => {
               {showProfile && <ProfileDropdown user={user} onLogout={onLogout} />}
             </AnimatePresence>
           </div>
-          <button className="w-12 h-12 rounded-2xl bg-white shadow-sm border border-slate-100 flex items-center justify-center text-slate-800 hover:bg-slate-50 transition-all">
-             <MoreHorizontal className="w-5 h-5" />
-          </button>
+          <div className="relative">
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowMoreHeader(!showMoreHeader);
+              }}
+              className="w-12 h-12 rounded-2xl bg-white shadow-sm border border-slate-100 flex items-center justify-center text-slate-800 hover:bg-slate-50 transition-all"
+            >
+              <MoreHorizontal className="w-5 h-5" />
+            </button>
+            <AnimatePresence>
+              {showMoreHeader && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                  className="absolute right-0 mt-4 w-56 bg-white rounded-3xl shadow-xl border border-slate-100 p-2 z-[200]"
+                >
+                  {['Dashboard Settings', 'Customize Layout', 'Export Data'].map(item => (
+                    <button 
+                      key={item}
+                      className="w-full text-left px-5 py-3 text-[14px] font-bold text-slate-600 hover:bg-slate-50 hover:text-blue-600 rounded-2xl transition-all"
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
 
       {/* Main Content Multi-Column Layout */}
-      <div className="grid grid-cols-12 gap-10">
+      <div className="grid grid-cols-12 gap-6 lg:gap-8">
         
         {/* Left Column: My Tasks */}
-        <div className="col-span-12 lg:col-span-5 flex flex-col gap-6">
-          <div className="bg-white/40 rounded-[3rem] p-6 border border-white shadow-sm flex flex-col h-full">
-            <div className="flex justify-between items-center mb-8 px-2">
-              <h3 className="text-[1.8rem] font-bold text-slate-800">My tasks</h3>
+        <div className="col-span-12 lg:col-span-5 flex flex-col gap-4">
+          <div className="bg-white/40 rounded-[2.5rem] p-5 border border-white shadow-sm flex flex-col h-full">
+            <div className="flex justify-between items-center mb-6 px-2">
+              <h3 className="text-[1.6rem] font-bold text-slate-800">My tasks</h3>
             </div>
             
-            <div className="flex gap-2 mb-8 px-2 overflow-x-auto no-scrollbar">
-              {['All task', 'To do', 'In progress', 'Done'].map((tab, i) => (
-                <button key={tab} className={`px-5 py-2.5 rounded-full text-[13px] font-bold transition-all whitespace-nowrap ${i === 0 ? 'bg-[#0f172a] text-white shadow-md' : 'text-slate-500 bg-white border border-slate-100 hover:border-slate-200'}`}>
+            <div className="flex gap-2 mb-6 px-2 overflow-x-auto no-scrollbar">
+              {['All task', 'To do', 'In progress', 'Done'].map((tab) => (
+                <button 
+                  key={tab} 
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-5 py-2.5 rounded-full text-[13px] font-bold transition-all whitespace-nowrap ${
+                    activeTab === tab 
+                      ? 'bg-[#0f172a] text-white shadow-md' 
+                      : 'text-slate-500 bg-white border border-slate-100 hover:border-slate-200'
+                  }`}
+                >
                   {tab}
                 </button>
               ))}
             </div>
 
             <div className="flex flex-col gap-4">
-              {flatTasks.slice(0, 5).map(task => <TaskCard key={`${task.id}-${task.status}`} {...task} />)}
+              {flatTasks
+                .filter(t => activeTab === 'All task' || t.status.toLowerCase() === activeTab.toLowerCase())
+                .slice(0, 5)
+                .map(task => (
+                <div 
+                  key={`${task.id}-${task.status}`} 
+                  className="relative group/task"
+                  onClick={() => setSelectedTask({ task, col: task.status })}
+                >
+                  <TaskCard {...task} />
+                  <div className="absolute top-6 right-6 z-10">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveTaskMenu(activeTaskMenu === task.id ? null : task.id);
+                      }}
+                      className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center hover:bg-black/10 transition-colors"
+                    >
+                      <MoreHorizontal className="w-4 h-4 text-slate-600" />
+                    </button>
+                    
+                    <AnimatePresence>
+                      {activeTaskMenu === task.id && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                          className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 p-2 z-[100]"
+                        >
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveTaskMenu(null);
+                              setSelectedTask({ task, col: task.status });
+                            }}
+                            className="w-full text-left px-4 py-2.5 text-[13px] font-bold text-slate-600 hover:bg-slate-50 hover:text-blue-600 rounded-xl transition-all flex items-center gap-2"
+                          >
+                            <ArrowUpRight className="w-4 h-4" /> View Details
+                          </button>
+                          {task.status === 'In Progress' && (
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveTaskMenu(null);
+                                setSelectedTask({ task, col: task.status });
+                              }}
+                              className="w-full text-left px-4 py-2.5 text-[13px] font-bold text-slate-600 hover:bg-slate-50 hover:text-blue-600 rounded-xl transition-all flex items-center gap-2"
+                            >
+                              <SlidersHorizontal className="w-4 h-4" /> Update Progress
+                            </button>
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+              ))}
             </div>
 
             <button className="mt-8 py-4 bg-white border border-slate-100 rounded-3xl text-[14px] font-bold text-slate-500 hover:text-slate-600 transition-all">
@@ -299,22 +505,57 @@ const StudentDashboard = ({ user, onLogout }) => {
         </div>
 
         {/* Right Column: Notes & Schedule */}
-        <div className="col-span-12 lg:col-span-7 flex flex-col gap-10">
+        <div className="col-span-12 lg:col-span-7 flex flex-col gap-6 lg:gap-8">
           
           {/* My Notes Section */}
-          <div className="bg-white/40 rounded-[3rem] p-8 border border-white shadow-sm">
-             <div className="flex justify-between items-center mb-6">
-                <h3 className="text-[1.8rem] font-bold text-slate-800">My notes</h3>
+          <div className="bg-white/40 rounded-[2.5rem] p-6 border border-white shadow-sm">
+             <div className="flex justify-between items-center mb-5">
+                <h3 className="text-[1.6rem] font-bold text-slate-800">My notes</h3>
              </div>
-             <div className="flex gap-6 overflow-x-auto no-scrollbar">
-                {NOTES.map(note => <NoteCard key={note.id} {...note} />)}
-             </div>
+              <div className="flex gap-6 overflow-x-auto no-scrollbar pb-4">
+                {NOTES.map(note => (
+                  <div key={note.id} className="relative group/note min-w-[300px] flex-1">
+                    <NoteCard {...note} />
+                    <div className="absolute top-6 right-6 z-10">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveNoteMenu(activeNoteMenu === note.id ? null : note.id);
+                        }}
+                        className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center hover:bg-black/10 transition-colors"
+                      >
+                        <MoreHorizontal className="w-4 h-4 text-slate-600" />
+                      </button>
+                      
+                      <AnimatePresence>
+                        {activeNoteMenu === note.id && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                            className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 p-2 z-[100]"
+                          >
+                            {['Open Note', 'Pin to Top', 'Share', 'Delete'].map(item => (
+                              <button 
+                                key={item}
+                                className={`w-full text-left px-4 py-2.5 text-[13px] font-bold rounded-xl transition-all ${item === 'Delete' ? 'text-rose-500 hover:bg-rose-50' : 'text-slate-600 hover:bg-slate-50 hover:text-blue-600'}`}
+                              >
+                                {item}
+                              </button>
+                            ))}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </div>
+                ))}
+              </div>
           </div>
 
           {/* My Schedule Section */}
-          <div className="bg-white/40 rounded-[3rem] p-8 border border-white shadow-sm">
-             <div className="flex justify-between items-center mb-8">
-                <h3 className="text-[1.8rem] font-bold text-slate-800">My schedule</h3>
+          <div className="bg-white/40 rounded-[2.5rem] p-6 border border-white shadow-sm">
+             <div className="flex justify-between items-center mb-6">
+                <h3 className="text-[1.6rem] font-bold text-slate-800">My schedule</h3>
                 <button className="px-5 py-2.5 rounded-full bg-white border border-slate-100 text-[14px] font-bold text-slate-800 flex items-center gap-2">
                   May 14, Mon <ChevronDown className="w-4 h-4 text-slate-400" />
                 </button>
@@ -336,7 +577,20 @@ const StudentDashboard = ({ user, onLogout }) => {
         </div>
 
       </div>
-
+      </div>
+      {/* Task Details Modal */}
+      <AnimatePresence>
+        {selectedTask && (
+          <TaskDetailModal
+            task={selectedTask.task}
+            col={selectedTask.col}
+            onClose={() => setSelectedTask(null)}
+            onStart={handleTaskStart}
+            onComplete={handleTaskComplete}
+            onProgressUpdate={handleTaskProgressUpdate}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };

@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Download, Bookmark, FileText, Video, Image as ImageIcon, Tag, Plus, ChevronRight, Hash, ArrowUpRight } from 'lucide-react';
+import { Search, Download, Bookmark, FileText, Video, Image as ImageIcon, Tag, Plus, ChevronRight, Hash, ArrowUpRight, MoreHorizontal } from 'lucide-react';
 
 const NOTES = [
   { id: 1, title: 'Math Conspect – Linear Equations', subject: 'Mathematics', chapter: 'Chapter 3', date: 'May 05, 2025', type: 'pdf', color: 'from-blue-500 to-indigo-600', tag: 'conspectus', content: 'A linear equation is ax+b=c, where x is the unknown variable...' },
@@ -20,14 +20,22 @@ const tagColors = {
 const typeIcons = { pdf: FileText, doc: FileText, video: Video, image: ImageIcon };
 
 const NotesView = () => {
-  const [search, setSearch] = useState('');
   const [activeSubject, setActiveSubject] = useState('All');
+  const [search, setSearch] = useState('');
+  const [activeMenu, setActiveMenu] = useState(null);
   const subjects = ['All', ...new Set(NOTES.map(n => n.subject))];
 
   const filtered = NOTES.filter(n =>
     (activeSubject === 'All' || n.subject === activeSubject) &&
     (n.title.toLowerCase().includes(search.toLowerCase()) || n.subject.toLowerCase().includes(search.toLowerCase()))
   );
+
+  // Click outside to close menu
+  useEffect(() => {
+    const handleClick = () => setActiveMenu(null);
+    window.addEventListener('click', handleClick);
+    return () => window.removeEventListener('click', handleClick);
+  }, []);
 
   return (
     <div className="flex flex-col gap-10 w-full pb-20">
@@ -37,11 +45,6 @@ const NotesView = () => {
           <p className="text-[15px] font-bold text-slate-400 mt-2 uppercase tracking-[0.2em]">{NOTES.length} Academic Resources</p>
         </div>
         
-        <div className="flex items-center gap-4">
-           <button className="px-8 py-4 bg-slate-900 text-white rounded-[1.5rem] font-black text-[13px] uppercase tracking-widest flex items-center gap-3 shadow-xl shadow-slate-900/10 hover:bg-black transition-all">
-              <Plus className="w-5 h-5" /> Create Note
-           </button>
-        </div>
       </div>
 
       {/* Modern Search & Categorization */}
@@ -82,15 +85,47 @@ const NotesView = () => {
                 exit={{ opacity: 0, scale: 0.9 }}
                 transition={{ delay: i * 0.05 }}
                 whileHover={{ y: -8 }} 
-                className="group bg-white/70 backdrop-blur-xl rounded-[3rem] p-8 border border-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.02)] hover:shadow-2xl transition-all flex flex-col gap-6 cursor-pointer relative overflow-hidden"
+                className="group bg-white/70 backdrop-blur-xl rounded-[3rem] p-8 border border-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.02)] hover:shadow-2xl transition-all flex flex-col gap-6 cursor-pointer relative overflow-visible"
               >
                 <div className="flex items-start justify-between relative z-10">
                   <div className={`w-14 h-14 rounded-[1.2rem] flex items-center justify-center bg-gradient-to-br ${note.color} shadow-lg shadow-blue-500/10`}>
                     <TypeIcon className="w-6 h-6 text-white" />
                   </div>
-                  <button className="p-3 bg-slate-50 rounded-2xl text-slate-300 hover:text-slate-900 hover:bg-slate-100 transition-all">
-                      <Bookmark className="w-5 h-5" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button className="p-3 bg-slate-50 rounded-2xl text-slate-300 hover:text-slate-900 hover:bg-slate-100 transition-all">
+                        <Bookmark className="w-5 h-5" />
+                    </button>
+                    <div className="relative">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveMenu(activeMenu === note.id ? null : note.id);
+                        }}
+                        className="p-3 bg-slate-50 rounded-2xl text-slate-300 hover:text-slate-900 hover:bg-slate-100 transition-all"
+                      >
+                        <MoreHorizontal className="w-5 h-5" />
+                      </button>
+                      <AnimatePresence>
+                        {activeMenu === note.id && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                            className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 p-2 z-[100]"
+                          >
+                            {['Open Note', 'Pin to Top', 'Share', 'Delete'].map(item => (
+                              <button 
+                                key={item}
+                                className={`w-full text-left px-4 py-2.5 text-[13px] font-bold rounded-xl transition-all ${item === 'Delete' ? 'text-rose-500 hover:bg-rose-50' : 'text-slate-600 hover:bg-slate-50 hover:text-blue-600'}`}
+                              >
+                                {item}
+                              </button>
+                            ))}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </div>
                 </div>
                 
                 <div className="flex-grow flex flex-col gap-3 relative z-10">
