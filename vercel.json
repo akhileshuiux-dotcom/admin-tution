@@ -1,7 +1,0 @@
-{
-    "rewrites": [
-        { "source": "/", "destination": "/index.html" },
-        { "source": "/admin/(.*)", "destination": "/frontend/admin/index.html" },
-        { "source": "/student/(.*)", "destination": "/frontend/student/index.html" }
-    ]
-}

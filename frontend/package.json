@@ -1,17 +1,22 @@
 {
   "name": "eduway-frontend-root",
   "private": true,
-  "workspaces": [
-    "admin",
-    "student"
-  ],
+  "type": "module",
   "scripts": {
-    "dev": "npm run admin:dev",
-    "admin:dev": "npm run dev -w admin",
-    "admin:build": "npm run build -w admin"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "axios": "^1.6.2",
+    "framer-motion": "^10.16.5",
+    "lucide-react": "^0.294.0"
   },
   "devDependencies": {
     "vite": "^6.0.0",
+    "@vitejs/plugin-react": "^4.2.0",
     "autoprefixer": "^10.4.16",
     "postcss": "^8.4.31",
     "tailwindcss": "^3.4.0",
