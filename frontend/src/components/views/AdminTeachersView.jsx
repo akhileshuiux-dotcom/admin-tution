@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  GraduationCap, Plus, Search, Filter, 
+import {
+  GraduationCap, Plus, Search, Filter,
   UserPlus, Mail, Hash, BookOpen, Trash2, Edit2, X, Briefcase
 } from 'lucide-react';
 import api from '../../api';
@@ -30,6 +30,8 @@ const AdminTeachersView = () => {
   const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [filters, setFilters] = useState({ specialization: '', status: '' });
+  const [showFilters, setShowFilters] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -37,7 +39,7 @@ const AdminTeachersView = () => {
   // Form State
   const [form, setForm] = useState({
     user: { username: '', email: '', first_name: '', last_name: '', password: 'Teacher@123' },
-    employee_id: '', specialization: '', bio: ''
+    employee_id: '', specialization: '', bio: '', status: 'active'
   });
 
   useEffect(() => { fetchTeachers(); }, []);
@@ -59,12 +61,12 @@ const AdminTeachersView = () => {
 
   const handleEdit = (t) => {
     setForm({
-      user: { 
-        username: t.user.username, email: t.user.email, 
-        first_name: t.user.first_name, last_name: t.user.last_name, 
-        password: '' 
+      user: {
+        username: t.user.username, email: t.user.email,
+        first_name: t.user.first_name, last_name: t.user.last_name,
+        password: ''
       },
-      employee_id: t.employee_id, specialization: t.specialization, bio: t.bio
+      employee_id: t.employee_id, specialization: t.specialization, bio: t.bio, status: t.status || 'active'
     });
     setEditingId(t.id);
     setShowModal(true);
@@ -75,6 +77,12 @@ const AdminTeachersView = () => {
     setSaving(true);
     try {
       const payload = { ...form };
+
+      // Sync username with email for authentication
+      if (!payload.user.username) {
+        payload.user.username = payload.user.email;
+      }
+
       if (!payload.user.password) delete payload.user.password;
 
       if (editingId) {
@@ -97,8 +105,15 @@ const AdminTeachersView = () => {
   const filtered = teachers.filter(t => {
     const q = search.toLowerCase();
     const name = `${t.user?.first_name} ${t.user?.last_name} ${t.user?.username}`.toLowerCase();
-    return name.includes(q) || t.employee_id.toLowerCase().includes(q);
+    const matchesSearch = name.includes(q) || t.employee_id.toLowerCase().includes(q) || t.specialization?.toLowerCase().includes(q);
+    
+    const matchesSpecialization = !filters.specialization || t.specialization === filters.specialization;
+    const matchesStatus = !filters.status || t.status === filters.status;
+    
+    return matchesSearch && matchesSpecialization && matchesStatus;
   });
+
+  const specializations = [...new Set(teachers.map(t => t.specialization).filter(Boolean))].sort();
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -108,10 +123,10 @@ const AdminTeachersView = () => {
           <h2 style={{ fontSize: 24, fontWeight: 800, color: '#1e293b', margin: '0 0 4px' }}>Instructor Directory</h2>
           <p style={{ color: '#64748b', fontSize: 14, margin: 0 }}>Manage the academy's teaching staff.</p>
         </div>
-        <button 
+        <button
           onClick={() => { resetForm(); setShowModal(true); }}
-          style={{ 
-            display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', background: '#0ea5e9', 
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', background: '#0ea5e9',
             color: '#fff', borderRadius: 14, border: 'none', fontWeight: 700, cursor: 'pointer',
             boxShadow: '0 4px 12px rgba(14,165,233,0.2)'
           }}
@@ -124,11 +139,65 @@ const AdminTeachersView = () => {
       <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 18, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 12, background: '#f8fafc', padding: '8px 16px', borderRadius: 12, border: '1px solid #e2e8f0' }}>
           <Search size={18} color="#94a3b8" />
-          <input 
+          <input
             value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search by name, ID or specialization..." 
-            style={{ background: 'none', border: 'none', outline: 'none', flex: 1, color: '#1e293b', fontSize: 14 }} 
+            placeholder="Search by name, ID or specialization..."
+            style={{ background: 'none', border: 'none', outline: 'none', flex: 1, color: '#1e293b', fontSize: 14 }}
           />
+        </div>
+        <select 
+          value={filters.status} onChange={e => setFilters({...filters, status: e.target.value})}
+          style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: '10px 16px', fontSize: 13, fontWeight: 700, color: '#64748b', outline: 'none' }}
+        >
+          <option value="">All Statuses</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+        <div style={{ position: 'relative' }}>
+          <button 
+            onClick={() => setShowFilters(!showFilters)}
+            style={{ 
+              padding: '10px 20px', borderRadius: 12, border: '1px solid #e2e8f0', 
+              background: showFilters ? '#0ea5e9' : '#fff', color: showFilters ? '#fff' : '#64748b',
+              display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14, fontWeight: 700
+            }}
+          >
+            <Filter size={18} /> More Filters
+          </button>
+          <AnimatePresence>
+            {showFilters && (
+              <>
+                <div onClick={() => setShowFilters(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+                <motion.div 
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  style={{ 
+                    position: 'absolute', right: 0, top: 'calc(100% + 12px)', width: 280, background: '#fff', 
+                    borderRadius: 20, border: '1px solid #e2e8f0', padding: 24, zIndex: 50, boxShadow: '0 25px 50px -12px rgba(0,0,0,0.15)'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                    <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: '#1e293b' }}>Advanced Filters</h4>
+                    <button 
+                      onClick={() => setFilters({ specialization: '', status: '' })}
+                      style={{ border: 'none', background: 'none', color: '#0ea5e9', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0 }}
+                    >Reset All</button>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <label style={{ fontSize: 11, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Specialization</label>
+                      <select 
+                        value={filters.specialization} onChange={e => setFilters({ ...filters, specialization: e.target.value })}
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: 12, border: '1px solid #e2e8f0', background: '#f8fafc', fontSize: 14, outline: 'none', color: '#1e293b' }}
+                      >
+                        <option value="">All Specializations</option>
+                        {specializations.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
@@ -140,6 +209,7 @@ const AdminTeachersView = () => {
               <th style={{ padding: '16px 24px', fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Instructor</th>
               <th style={{ padding: '16px 24px', fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Employee ID</th>
               <th style={{ padding: '16px 24px', fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Specialization</th>
+              <th style={{ padding: '16px 24px', fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Status</th>
               <th style={{ padding: '16px 24px', fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
@@ -165,7 +235,18 @@ const AdminTeachersView = () => {
                   <p style={{ margin: 0, fontWeight: 600, color: '#1e293b', fontSize: 14 }}>{t.employee_id}</p>
                 </td>
                 <td style={{ padding: '16px 24px' }}>
-                   <span style={{ fontSize: 11, fontWeight: 700, color: '#0369a1', background: '#e0f2fe', padding: '2px 8px', borderRadius: 6 }}>{t.specialization || 'General'}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#0369a1', background: '#e0f2fe', padding: '2px 8px', borderRadius: 6 }}>{t.specialization || 'General'}</span>
+                </td>
+                <td style={{ padding: '16px 24px' }}>
+                  <div style={{ 
+                    display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 8,
+                    background: t.status === 'active' ? '#f0fdf4' : '#fef2f2',
+                    color: t.status === 'active' ? '#15803d' : '#b91c1c',
+                    fontSize: 11, fontWeight: 700, border: `1px solid ${t.status === 'active' ? '#dcfce7' : '#fee2e2'}`
+                  }}>
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor' }} />
+                    {t.status === 'active' ? 'Active' : 'Inactive'}
+                  </div>
                 </td>
                 <td style={{ padding: '16px 24px', textAlign: 'right' }}>
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
@@ -195,14 +276,24 @@ const AdminTeachersView = () => {
               </div>
               <form onSubmit={save} style={{ padding: 32, display: 'flex', flexDirection: 'column', gap: 24 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-                  <InputField label="First Name" icon={GraduationCap} value={form.user.first_name} onChange={e => setForm({...form, user: {...form.user, first_name: e.target.value}})} required />
-                  <InputField label="Last Name" icon={GraduationCap} value={form.user.last_name} onChange={e => setForm({...form, user: {...form.user, last_name: e.target.value}})} required />
-                  <InputField label="Email Address" icon={Mail} value={form.user.email} onChange={e => setForm({...form, user: {...form.user, email: e.target.value}})} required type="email" />
-                  {!editingId && <InputField label="Portal Password" icon={Hash} value={form.user.password} onChange={e => setForm({...form, user: {...form.user, password: e.target.value}})} required />}
-                  <InputField label="Employee ID" icon={Hash} value={form.employee_id} onChange={e => setForm({...form, employee_id: e.target.value})} required placeholder="EMP-2024-XXX" />
-                  <InputField label="Specialization" icon={Briefcase} value={form.specialization} onChange={e => setForm({...form, specialization: e.target.value})} placeholder="Mathematics, Science, etc." />
+                  <InputField label="First Name" icon={GraduationCap} value={form.user.first_name} onChange={e => setForm({ ...form, user: { ...form.user, first_name: e.target.value } })} required />
+                  <InputField label="Last Name" icon={GraduationCap} value={form.user.last_name} onChange={e => setForm({ ...form, user: { ...form.user, last_name: e.target.value } })} required />
+                  <InputField label="Email Address" icon={Mail} value={form.user.email} onChange={e => setForm({ ...form, user: { ...form.user, email: e.target.value } })} required type="email" />
+                  {!editingId && <InputField label="Portal Password" icon={Hash} value={form.user.password} onChange={e => setForm({ ...form, user: { ...form.user, password: e.target.value } })} required />}
+                  <InputField label="Employee ID" icon={Hash} value={form.employee_id} onChange={e => setForm({ ...form, employee_id: e.target.value })} required placeholder="EMP-2024-XXX" />
+                  <InputField label="Specialization" icon={Briefcase} value={form.specialization} onChange={e => setForm({ ...form, specialization: e.target.value })} placeholder="Mathematics, Science, etc." />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</label>
+                    <select 
+                      value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1px solid #e2e8f0', background: '#f8fafc', fontSize: 14, outline: 'none' }}
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                  </div>
                   <div style={{ gridColumn: 'span 2' }}>
-                    <InputField label="Biography" icon={BookOpen} value={form.bio} onChange={e => setForm({...form, bio: e.target.value})} placeholder="Brief teacher biography..." />
+                    <InputField label="Biography" icon={BookOpen} value={form.bio} onChange={e => setForm({ ...form, bio: e.target.value })} placeholder="Brief teacher biography..." />
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>

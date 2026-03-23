@@ -1,18 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
-import { UsersRound, Search, Phone, BookOpen, Hash } from 'lucide-react';
-import axios from 'axios';
-
-const API_BASE = 'http://localhost:8000/api';
+import { UsersRound, Search, Phone, BookOpen, Hash, User } from 'lucide-react';
+import api from '../../api';
 
 const TeacherStudentsView = () => {
-  const [students, setStudents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [selected, setSelected] = useState(null);
+  const [students, setStudents] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [search, setSearch] = React.useState('');
+  const [selected, setSelected] = React.useState(null);
+  const [showFilters, setShowFilters] = React.useState(false);
+  const [filters, setFilters] = React.useState({ grade: '', status: '' });
 
-  useEffect(() => {
-    axios.get(`${API_BASE}/students/`, { withCredentials: true })
+  React.useEffect(() => {
+    api.get('/students/')
       .then(r => setStudents(r.data))
       .catch(e => console.error(e))
       .finally(() => setLoading(false));
@@ -21,7 +21,10 @@ const TeacherStudentsView = () => {
   const filtered = students.filter(s => {
     const q = search.toLowerCase();
     const n = `${s.user?.first_name||''} ${s.user?.last_name||''} ${s.user?.username||''}`.toLowerCase();
-    return n.includes(q) || s.student_id?.toLowerCase().includes(q) || s.grade?.toLowerCase().includes(q);
+    const matchesSearch = n.includes(q) || s.student_id?.toLowerCase().includes(q) || s.grade?.toLowerCase().includes(q);
+    const matchesGrade = !filters.grade || s.grade === filters.grade;
+    const matchesStatus = !filters.status || s.status === filters.status;
+    return matchesSearch && matchesGrade && matchesStatus;
   });
 
   return (
@@ -37,10 +40,39 @@ const TeacherStudentsView = () => {
             <p style={{ color: '#94a3b8', fontSize: 12, margin: 0 }}>{students.length} students enrolled</p>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 11, padding: '8px 14px' }}>
-          <Search size={14} color="#94a3b8" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search students…"
-            style={{ background: 'none', border: 'none', outline: 'none', color: '#1e293b', fontSize: 13, width: 180 }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 11, padding: '8px 14px' }}>
+            <Search size={14} color="#94a3b8" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search students…"
+              style={{ background: 'none', border: 'none', outline: 'none', color: '#1e293b', fontSize: 13, width: 180 }} />
+          </div>
+          <div style={{ position: 'relative' }}>
+            <button onClick={() => setShowFilters(!showFilters)}
+              style={{ padding: '10px 16px', borderRadius: 11, border: '1px solid #e2e8f0', background: showFilters ? '#6366f1' : '#fff', color: showFilters ? '#fff' : '#64748b', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s' }}>
+              <UsersRound size={14} />
+              Filter
+            </button>
+            {showFilters && (
+              <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 8, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: 16, boxShadow: '0 10px 25px rgba(0,0,0,0.1)', zIndex: 100, width: 220, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: 10, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Grade</label>
+                  <select value={filters.grade} onChange={e => setFilters({...filters, grade: e.target.value})} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13 }}>
+                    <option value="">All Grades</option>
+                    {[...Array(12)].map((_,i) => <option key={i+1} value={`${i+1}th`}>{i+1}th Grade</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: 10, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Status</label>
+                  <select value={filters.status} onChange={e => setFilters({...filters, status: e.target.value})} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13 }}>
+                    <option value="">All Statuses</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+                <button onClick={() => setFilters({grade:'', status:''})} style={{ marginTop: 4, background: 'none', border: 'none', color: '#6366f1', fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0, textAlign: 'left' }}>Clear All</button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -75,7 +107,9 @@ const TeacherStudentsView = () => {
                       style={{ borderTop: '1px solid #f1f5f9', padding: '14px 18px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, background: '#fafafa' }}>
                       <Detail icon={Hash} label="Student ID" value={s.student_id} />
                       <Detail icon={BookOpen} label="Grade" value={s.grade} />
+                      <Detail icon={User} label="Parent Name" value={s.parent_name} />
                       <Detail icon={Phone} label="Parent Contact" value={s.parent_contact} />
+                      <Detail icon={BookOpen} label="Subjects" value={s.subjects?.map(sub => sub.name).join(', ')} />
                       <Detail icon={BookOpen} label="Bio" value={s.bio} />
                       {s.medical_info && (
                         <div style={{ gridColumn: '1/-1' }}>

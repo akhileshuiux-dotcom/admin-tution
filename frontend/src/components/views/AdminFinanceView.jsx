@@ -33,7 +33,7 @@ const AdminFinanceView = () => {
   const [modalType, setModalType] = useState('payment');
   const [form, setForm] = useState({ 
     amount: '', date: new Date().toISOString().split('T')[0], 
-    student: '', month: '', title: '', percentage: '', reason: '' 
+    student: '', month: '', title: '', category: '', percentage: '', reason: '' 
   });
 
   const [totalIncome, setTotalIncome] = useState(0);
@@ -63,9 +63,9 @@ const AdminFinanceView = () => {
         api.get('/invoices/'),
         api.get('/expenses/'),
         api.get('/students/'),
-        api.get('/feetiars/'),
-        api.get('/student-discounts/'),
-        api.get('/teacher-salaries/')
+        api.get('/fee-tiers/'),
+        api.get('/discounts/'),
+        api.get('/salaries/')
       ]);
       setPayments(p.data);
       setInvoices(i.data);
@@ -90,8 +90,8 @@ const AdminFinanceView = () => {
       switch(modalType) {
         case 'payment': url = '/payments/'; break;
         case 'expense': url = '/expenses/'; break;
-        case 'fee-tier': url = '/feetiars/'; break;
-        case 'discount': url = '/student-discounts/'; break;
+        case 'fee-tier': url = '/fee-tiers/'; break;
+        case 'discount': url = '/discounts/'; break;
         case 'generate-invoice':
           await api.post('/invoices/generate_monthly/', { month: form.month });
           setShowModal(false);
@@ -361,9 +361,26 @@ const AdminFinanceView = () => {
                 )}
 
                 {(modalType === 'expense' || modalType === 'income') && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <label style={{ fontSize: 11, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Description / Title</label>
-                    <input required value={form.title} onChange={e => setForm({...form, title: e.target.value})} style={{ padding: '12px 16px', borderRadius: 14, border: '1px solid #e2e8f0', background: '#f8fafc', outline: 'none' }} placeholder="e.g. Office Rent, Electricity" />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <label style={{ fontSize: 11, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Description / Title</label>
+                      <input required value={form.title} onChange={e => setForm({...form, title: e.target.value})} style={{ padding: '12px 16px', borderRadius: 14, border: '1px solid #e2e8f0', background: '#f8fafc', outline: 'none' }} placeholder="e.g. Office Rent, Electricity" />
+                    </div>
+                    {modalType === 'expense' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <label style={{ fontSize: 11, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Category</label>
+                        <select required value={form.category} onChange={e => setForm({...form, category: e.target.value})} style={{ padding: '12px 16px', borderRadius: 14, border: '1px solid #e2e8f0', background: '#f8fafc', outline: 'none' }}>
+                          <option value="">Select category...</option>
+                          <option value="Rent">Rent</option>
+                          <option value="Utilities">Utilities</option>
+                          <option value="Marketing">Marketing</option>
+                          <option value="Salaries">Salaries</option>
+                          <option value="Maintenance">Maintenance</option>
+                          <option value="Supplies">Supplies</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+                    )}
                   </div>
                 )}
 

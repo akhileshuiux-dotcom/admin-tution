@@ -2,23 +2,67 @@ from django.db import models
 from django.contrib.auth.models import User
 
 class Student(models.Model):
+    PLAN_TYPES = (
+        ('one-on-one', 'One-on-One'),
+        ('batch', 'Batch'),
+        ('twin', 'Twin'),
+        ('revision', 'Revision'),
+    )
+    STATUS_CHOICES = (
+        ('active', 'Active'),
+        ('inactive', 'Inactive'),
+    )
+    PLAN_STATUS_CHOICES = (
+        ('new', 'New'),
+        ('active', 'Active'),
+        ('pending_renewal', 'Pending Renewal'),
+        ('inactive', 'Inactive'),
+        ('completed', 'Completed'),
+        ('scheduled_leave', 'Scheduled Leave'),
+        ('discontinued', 'Discontinued'),
+    )
+
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='student_profile')
-    student_id = models.CharField(max_length=20, unique=True)
+    student_id = models.CharField(max_length=20, unique=True, blank=True) # Allow blank for auto-generation
     grade = models.CharField(max_length=10)
     enrolled_date = models.DateField(auto_now_add=True)
     bio = models.TextField(blank=True)
     points = models.IntegerField(default=0)
+    parent_name = models.CharField(max_length=100, blank=True)
     parent_contact = models.CharField(max_length=50, blank=True)
     medical_info = models.TextField(blank=True)
+    
+    # New Fields
+    subjects = models.ManyToManyField('Subject', related_name='students', blank=True)
+    plan_type = models.CharField(max_length=20, choices=PLAN_TYPES, default='one-on-one')
+    syllabus = models.CharField(max_length=100, blank=True)
+    sessions_per_week = models.PositiveIntegerField(default=1)
+    location = models.CharField(max_length=255, blank=True)
+    learning_goals = models.TextField(blank=True)
+    special_requirements = models.TextField(blank=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='active')
+    plan_status = models.CharField(max_length=20, choices=PLAN_STATUS_CHOICES, default='new')
+
+    def save(self, *args, **kwargs):
+        if not self.student_id:
+            # Simple auto-generation logic: STD-UNIXTIMESTAMP or similar
+            import time
+            self.student_id = f"STD-{int(time.time())}"
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.user.get_full_name()} ({self.student_id})"
 
 class Teacher(models.Model):
+    STATUS_CHOICES = (
+        ('active', 'Active'),
+        ('inactive', 'Inactive'),
+    )
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='teacher_profile')
     employee_id = models.CharField(max_length=20, unique=True)
     bio = models.TextField(blank=True)
     specialization = models.CharField(max_length=100)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='active')
 
     def __str__(self):
         return f"Prof. {self.user.last_name} ({self.employee_id})"
@@ -153,6 +197,7 @@ class AdminMeeting(models.Model):
     title = models.CharField(max_length=200)
     date_time = models.DateTimeField()
     description = models.TextField(blank=True)
+    location = models.CharField(max_length=200, blank=True)
     mandatory_for_all = models.BooleanField(default=False)
     attendees = models.ManyToManyField(Teacher, related_name='admin_meetings', blank=True)
 

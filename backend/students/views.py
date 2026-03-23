@@ -87,6 +87,8 @@ class StudentViewSet(viewsets.ModelViewSet):
     queryset = Student.objects.all()
     serializer_class = StudentSerializer
     permission_classes = [IsAuthenticated]
+    filterset_fields = ['status', 'plan_status', 'grade', 'subjects']
+    search_fields = ['user__first_name', 'user__last_name', 'user__email', 'student_id', 'parent_contact']
 
 class TeacherViewSet(viewsets.ModelViewSet):
     queryset = Teacher.objects.all()
@@ -132,6 +134,7 @@ class AttendanceViewSet(viewsets.ModelViewSet):
     queryset = Attendance.objects.all()
     serializer_class = AttendanceSerializer
     permission_classes = [IsAuthenticated]
+    filterset_fields = ['student', 'date', 'status']
 
     @action(detail=False, methods=['POST'])
     def bulk_mark(self, request):
@@ -169,6 +172,7 @@ class StudentPaymentViewSet(viewsets.ModelViewSet):
     queryset = StudentPayment.objects.all()
     serializer_class = StudentPaymentSerializer
     permission_classes = [IsAuthenticated]
+    filterset_fields = ['student', 'status', 'month']
 
 class TeacherSalaryViewSet(viewsets.ModelViewSet):
     queryset = TeacherSalary.objects.all()

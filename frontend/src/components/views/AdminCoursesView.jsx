@@ -58,7 +58,7 @@ const AdminCoursesView = () => {
 
   // Form State
   const [form, setForm] = useState({
-    title: '', description: '', teacher: '', subject: ''
+    name: '', description: '', teacher: '', subject: '', grade_level: ''
   });
 
   useEffect(() => { 
@@ -80,10 +80,11 @@ const AdminCoursesView = () => {
 
   const handleEdit = (c) => {
     setForm({
-      title: c.title,
+      name: c.name,
       description: c.description,
       teacher: c.teacher?.id || '',
-      subject: c.subject?.id || ''
+      subject: c.subject?.id || '',
+      grade_level: c.grade_level || ''
     });
     setEditingId(c.id);
     setShowModal(true);
@@ -93,12 +94,20 @@ const AdminCoursesView = () => {
     e.preventDefault();
     setSaving(true);
     try {
+      const payload = {
+        name: form.name,
+        description: form.description,
+        teacher_id: form.teacher,
+        subject_id: form.subject,
+        grade_level: form.grade_level
+      };
+
       if (editingId) {
-        await api.patch(`/courses/${editingId}/`, form);
+        await api.patch(`/courses/${editingId}/`, payload);
       } else {
-        await api.post(`/courses/`, form);
+        await api.post(`/courses/`, payload);
       }
-      setShowModal(false); setForm({title:'', description:'', teacher:'', subject:''}); setEditingId(null); fetchData();
+      setShowModal(false); setForm({name:'', description:'', teacher:'', subject:'', grade_level:''}); setEditingId(null); fetchData();
     } catch (e) {
       alert("Error saving course");
     } finally { setSaving(false); }
@@ -120,7 +129,7 @@ const AdminCoursesView = () => {
           <p style={{ color: '#64748b', fontSize: 14, margin: 0 }}>Create subjects and assign instructors to courses.</p>
         </div>
         <button 
-          onClick={() => { setEditingId(null); setForm({title:'', description:'', teacher:'', subject:''}); setShowModal(true); }}
+          onClick={() => { setEditingId(null); setForm({name:'', description:'', teacher:'', subject:'', grade_level:''}); setShowModal(true); }}
           style={{ 
             display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', background: '#f59e0b', 
             color: '#fff', borderRadius: 14, border: 'none', fontWeight: 700, cursor: 'pointer',
@@ -148,8 +157,11 @@ const AdminCoursesView = () => {
               </div>
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#1e293b' }}>{course.title}</h3>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', background: '#f1f5f9', padding: '2px 8px', borderRadius: 6 }}>{course.subject?.name || 'General'}</span>
+              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#1e293b' }}>{course.name}</h3>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', background: '#f1f5f9', padding: '2px 8px', borderRadius: 6 }}>{course.subject?.name || 'General'}</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase', background: '#fffbeb', padding: '2px 8px', borderRadius: 6, border: '1px solid #fde68a' }}>{course.grade_level}</span>
+              </div>
             </div>
             <p style={{ margin: 0, fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>{course.description || 'No description provided.'}</p>
             <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -173,7 +185,8 @@ const AdminCoursesView = () => {
                 <button onClick={() => setShowModal(false)} style={{ border: 'none', background: '#f1f5f9', width: 32, height: 32, borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={18} color="#64748b" /></button>
               </div>
               <form onSubmit={save} style={{ padding: 32, display: 'flex', flexDirection: 'column', gap: 20 }}>
-                <InputField label="Course Title" icon={BookOpen} value={form.title} onChange={e => setForm({...form, title: e.target.value})} required placeholder="e.g. Advanced Calculus" />
+                <InputField label="Course Name" icon={BookOpen} value={form.name} onChange={e => setForm({...form, name: e.target.value})} required placeholder="e.g. Advanced Calculus" />
+                <InputField label="Grade Level" icon={Layers} value={form.grade_level} onChange={e => setForm({...form, grade_level: e.target.value})} required placeholder="e.g. 10th Grade" />
                 <InputField label="Description" icon={Tag} value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="What's this course about?" />
                 
                 <SelectField 

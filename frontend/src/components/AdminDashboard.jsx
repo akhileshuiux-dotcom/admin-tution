@@ -70,7 +70,7 @@ const AdminDashboard = ({ user, onLogout }) => {
               </div>
               <div>
                 <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#1e293b', letterSpacing: '-0.02em' }}>EDUWAY</h1>
-                <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Admin Control</p>
+                <p style={{ margin: 0, fontSize: 10, fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Admin Control</p>
               </div>
             </div>
           ) : (
@@ -152,8 +152,8 @@ const AdminDashboard = ({ user, onLogout }) => {
       <main style={{ flex: 1, height: '100vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         {/* Top Navbar */}
         <header style={{
-          background: 'rgba(255, 255, 255, 0.8)',
-          backdropFilter: 'blur(8px)',
+          background: 'rgba(255, 255, 255, 0.98)',
+          backdropFilter: 'blur(12px)',
           padding: '16px 32px',
           display: 'flex',
           alignItems: 'center',
