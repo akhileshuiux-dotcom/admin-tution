@@ -1,8 +1,10 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Eye, EyeOff } from 'lucide-react';
 import api from './api';
 import Background from './components/Background';
 import ErrorBoundary from './components/ErrorBoundary';
+import loginBgImage from './login_bg.jpg';
 
 // Essential Theme Imports
 import PrimaryTheme from './themes/PrimaryTheme';
@@ -15,12 +17,14 @@ import AdminDashboard from './components/AdminDashboard';
 
 // Lazy Loaded Views to prevent bundle-wide crashes
 const ScheduleView = lazy(() => import('./components/views/ScheduleView'));
-const TasksView = lazy(() => import('./components/views/TasksView'));
+
 const TestsView = lazy(() => import('./components/views/TestsView'));
 const ReportsView = lazy(() => import('./components/views/ReportsView'));
 const ChatView = lazy(() => import('./components/views/ChatView'));
 const NotesView = lazy(() => import('./components/views/NotesView'));
 const StudentAttendanceView = lazy(() => import('./components/views/StudentAttendanceView'));
+const StudentPapersView = lazy(() => import('./components/views/StudentPapersView'));
+const StudentGamesView = lazy(() => import('./components/views/StudentGamesView'));
 
 function App() {
   const [user, setUser] = useState(null);
@@ -31,6 +35,7 @@ function App() {
   const [creds, setCreds] = useState({ username: '', password: '' });
   const [loginRole, setLoginRole] = useState('student');
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -90,23 +95,27 @@ function App() {
   const renderContent = () => {
     if (!user) return null;
     
-    // Core Dashboards
+    // Core Dashboards (Standalone)
     if (user.role === 'admin') return <AdminDashboard user={user} onLogout={handleLogout} />;
     if (user.role === 'teacher') return <TeacherDashboard user={user} onLogout={handleLogout} />;
 
-    // Dynamic Views
+    // Student Views (Themed)
     const viewProps = { user };
+    let content;
     switch (activeView) {
-      case 'Dashboard': return <StudentDashboard user={user} onLogout={handleLogout} />;
-      case 'Schedule': return <ScheduleView {...viewProps} />;
-      case 'Tasks': return <TasksView {...viewProps} />;
-      case 'Tests': return <TestsView user={user} onFocusMode={setIsFocusMode} />;
-      case 'Reports': return <ReportsView {...viewProps} />;
-      case 'Chat': return <ChatView {...viewProps} />;
-      case 'Notes': return <NotesView {...viewProps} />;
-      case 'Attendance': return <StudentAttendanceView {...viewProps} />;
-      default: return <StudentDashboard user={user} onLogout={handleLogout} />;
+      case 'Dashboard': content = <StudentDashboard user={user} onLogout={handleLogout} />; break;
+      case 'Schedule': content = <ScheduleView {...viewProps} />; break;
+
+      case 'Tests': content = <TestsView user={user} onFocusMode={setIsFocusMode} />; break;
+      case 'Reports': content = <ReportsView {...viewProps} />; break;
+      case 'Chat': content = <ChatView {...viewProps} />; break;
+      case 'Notes': content = <NotesView {...viewProps} />; break;
+      case 'PastPapers': content = <StudentPapersView {...viewProps} />; break;
+      case 'Attendance': content = <StudentAttendanceView {...viewProps} />; break;
+      case 'Games': content = <StudentGamesView {...viewProps} />; break;
+      default: content = <StudentDashboard user={user} onLogout={handleLogout} />; break;
     }
+    return renderTheme(content);
   };
 
   const renderTheme = (content) => {
@@ -142,8 +151,9 @@ function App() {
       <main className="relative z-10">
         <AnimatePresence mode="wait">
           {!isAuthenticated ? (
-            <motion.div key="login" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.02 }} className="flex items-center justify-center min-h-screen p-6">
-              <div className="bg-slate-900/40 backdrop-blur-2xl p-12 rounded-[3rem] w-full max-w-lg shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] border border-white/5">
+            <motion.div key="login" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.02 }} style={{ backgroundImage: `url(${loginBgImage})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundColor: '#020617' }} className="flex items-center justify-center min-h-screen p-6 relative">
+              <div className="absolute inset-0 bg-black/70 backdrop-blur-md z-0"></div>
+              <div className="bg-slate-900/40 backdrop-blur-2xl p-12 rounded-[3rem] w-full max-w-lg shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] border border-white/5 relative z-10">
                 <div className="flex flex-col items-center gap-6 mb-12">
                   <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-2xl shadow-cyan-500/20">
                     <span className="text-4xl font-black text-white italic">A</span>
@@ -169,18 +179,23 @@ function App() {
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-4">Access Key</label>
-                    <input type="password" value={creds.password} onChange={e => setCreds({...creds, password: e.target.value})} className="w-full bg-white/90 border border-white/10 rounded-2xl px-6 py-4 text-slate-900 placeholder-slate-400 outline-none focus:border-cyan-500/50 transition-all font-medium" placeholder="••••••••" />
+                    <div className="relative">
+                      <input type={showPassword ? "text" : "password"} value={creds.password} onChange={e => setCreds({...creds, password: e.target.value})} className="w-full bg-white/90 border border-white/10 rounded-2xl px-6 py-4 text-slate-900 placeholder-slate-400 outline-none focus:border-cyan-500/50 transition-all font-medium pr-12" placeholder="••••••••" />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-500 transition-colors">
+                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      </button>
+                    </div>
                   </div>
                   
                   {error && <p className="text-rose-500 text-[11px] text-center font-bold tracking-tight bg-rose-500/10 py-3 rounded-xl border border-rose-500/20">{error}</p>}
 
                   <button type="submit" className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:scale-[1.02] active:scale-[0.98] text-white font-black py-5 rounded-2xl shadow-2xl shadow-cyan-500/20 transition-all mt-4 tracking-widest uppercase text-sm">
-                    Initalize Session
+                    Initialize Session
                   </button>
                 </form>
 
                 <div className="mt-8 pt-8 border-t border-white/5 text-center">
-                  <p className="text-slate-600 text-[10px] font-black tracking-widest uppercase">
+                  <p className="text-slate-600 text-[10px] font-black tracking-widest">
                     {loginRole === 'admin' ? "ID: admin@gmail.com | Key: Admin@123" : loginRole === 'teacher' ? "ID: teacher@gmail.com | Key: Teacher@123" : "ID: student@gmail.com | Key: Student@123"}
                   </p>
                 </div>
@@ -188,7 +203,7 @@ function App() {
             </motion.div>
           ) : (
             <motion.div key="content" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen">
-               {renderTheme(renderContent())}
+               {renderContent()}
             </motion.div>
           )}
         </AnimatePresence>

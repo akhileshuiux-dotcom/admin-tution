@@ -19,7 +19,7 @@ const InputField = ({ label, icon: Icon, value, onChange, placeholder, type = "t
         placeholder={placeholder}
         style={{
           width: '100%', padding: '10px 12px 10px 38px', borderRadius: 12, border: '1px solid #e2e8f0',
-          fontSize: 14, outline: 'none', background: '#f8fafc', boxSizing: 'border-box'
+          fontSize: 14, outline: 'none', background: '#f8fafc', color: '#1e293b', boxSizing: 'border-box'
         }}
       />
     </div>
@@ -37,7 +37,7 @@ const SelectField = ({ label, icon: Icon, value, onChange, options, required = f
         onChange={onChange}
         style={{
           width: '100%', padding: '10px 12px 10px 38px', borderRadius: 12, border: '1px solid #e2e8f0',
-          fontSize: 14, outline: 'none', background: '#f8fafc', boxSizing: 'border-box', appearance: 'none'
+          fontSize: 14, outline: 'none', background: '#f8fafc', color: '#1e293b', boxSizing: 'border-box', appearance: 'none'
         }}
       >
         <option value="">Select Option</option>

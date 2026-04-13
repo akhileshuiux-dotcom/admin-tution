@@ -11,7 +11,7 @@ import api from '../../api';
 // Reusable Components
 const InputField = ({ label, icon: Icon, value, onChange, placeholder, type = "text", required = false }) => (
   <div className="flex flex-col gap-1.5 flex-1">
-    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{label}</label>
+    <label className="text-[10px] font-black text-slate-950 uppercase tracking-widest ml-1">{label}</label>
     <div className="relative">
       <Icon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
       <input
@@ -28,7 +28,7 @@ const InputField = ({ label, icon: Icon, value, onChange, placeholder, type = "t
 
 const SelectField = ({ label, icon: Icon, value, onChange, options, required = false }) => (
   <div className="flex flex-col gap-1.5 flex-1">
-    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">{label}</label>
+    <label className="text-[10px] font-black text-slate-950 uppercase tracking-widest ml-1">{label}</label>
     <div className="relative">
       <Icon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
       <select

@@ -7,7 +7,10 @@ from .views import (
     QuestionViewSet, ExamResultViewSet, 
     AttendanceViewSet, AdminMeetingViewSet, TeacherAttendanceViewSet,
     StudentPaymentViewSet, TeacherSalaryViewSet, ExpenseViewSet, IncomeViewSet,
-    FeeTierViewSet, StudentDiscountViewSet, InvoiceViewSet
+    FeeTierViewSet, StudentDiscountViewSet, InvoiceViewSet,
+    CreditAdvanceViewSet, FinancialTransactionViewSet, FeeInstallmentViewSet, FinanceDashboardView,
+    NoteAssignmentViewSet, OnlineClassViewSet, TeacherMeetingViewSet, PreviousYearPaperViewSet,
+    PaperAttemptViewSet
 )
 
 router = DefaultRouter()
@@ -30,11 +33,20 @@ router.register(r'income', IncomeViewSet)
 router.register(r'fee-tiers', FeeTierViewSet)
 router.register(r'discounts', StudentDiscountViewSet)
 router.register(r'invoices', InvoiceViewSet)
+router.register(r'credits', CreditAdvanceViewSet)
+router.register(r'transactions', FinancialTransactionViewSet)
+router.register(r'installments', FeeInstallmentViewSet)
+router.register(r'note-assignments', NoteAssignmentViewSet)
+router.register(r'online-classes', OnlineClassViewSet)
+router.register(r'teacher-meetings', TeacherMeetingViewSet)
+router.register(r'previous-papers', PreviousYearPaperViewSet)
+router.register(r'paper-attempts', PaperAttemptViewSet)
 
 urlpatterns = [
     path('csrf/', get_csrf_token_view, name='get_csrf'),
     path('login/', login_view, name='login'),
     path('logout/', logout_view, name='logout'),
     path('profile/', ProfileView.as_view(), name='profile'),
+    path('finance-dashboard/', FinanceDashboardView.as_view(), name='finance_dashboard'),
     path('', include(router.urls)),
 ]

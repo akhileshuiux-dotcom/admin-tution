@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Bell, Plus, MoreHorizontal, ChevronDown, X, Settings, LogOut, User, HelpCircle, BookOpen, CheckCheck, PlayCircle, CheckCircle, FileText, SlidersHorizontal, Clock } from 'lucide-react';
+import { Search, Bell, Plus, MoreHorizontal, ChevronDown, X, Settings, LogOut, User, HelpCircle, BookOpen, CheckCheck, PlayCircle, CheckCircle, FileText, SlidersHorizontal, Clock, Award, TrendingUp } from 'lucide-react';
 import api from '../api';
 
 const NOTIFICATIONS = [
@@ -363,6 +363,7 @@ const ScheduleRow = ({ time, lesson, teacher, location, avatar }) => (
 const StudentDashboard = ({ user, onLogout }) => {
   const [tasks, setTasks] = useState([]);
   const [notes, setNotes] = useState([]);
+  const [performance, setPerformance] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -373,33 +374,46 @@ const StudentDashboard = ({ user, onLogout }) => {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const [tResp, nResp] = await Promise.all([
-        api.get('/exams/'), // Using exams as tasks for now, or if there's a specific task model
+      const [tResp, nResp, pResp] = await Promise.all([
+        api.get('/exams/'),
         api.get('/resources/'),
+        api.get('/exam-results/?status=published'),
       ]);
       
-      // Transform backend exams to dashboard tasks if needed
-      const backendTasks = tResp.data.map(ex => ({
-        id: ex.id,
-        title: ex.title,
-        subject: ex.course_name || 'General',
-        date: new Date(ex.scheduled_date).toLocaleDateString(),
-        status: ex.is_active ? 'In progress' : 'To do',
-        progress: 0 // Mock progress for now as it's not in the backend Exam model
-      }));
-
-      setTasks(backendTasks.slice(0, 4));
+      setPerformance(pResp.data);
       
       // Transform resources to notes
-      const backendNotes = nResp.data.map(res => ({
-        id: res.id,
-        title: res.title,
-        content: `Type: ${res.file_type.toUpperCase()}`,
-        date: new Date().toLocaleDateString(), // Mock date
-        color: res.file_type === 'pdf' ? 'bg-emerald-100 border border-emerald-200' : 'bg-indigo-100 border border-indigo-200'
-      }));
-      
-      setNotes(backendNotes.slice(0, 2));
+      const backendNotes = nResp.data.map(res => {
+        let savedProgress = 0;
+        let savedStatus = 'To do';
+        try {
+          const stored = localStorage.getItem('eduway_notes_tracking');
+          if (stored) {
+            const data = JSON.parse(stored);
+            const tracking = data[res.id];
+            if (tracking) {
+              savedProgress = tracking.progress || 0;
+              savedStatus = tracking.status || 'To do';
+            }
+          }
+        } catch(e) {}
+        
+        return {
+          id: res.id,
+          title: res.title,
+          content: res.description || `Type: ${res.file_type.toUpperCase()}`,
+          subject: res.course_name || 'General',
+          date: new Date().toLocaleDateString(),
+          progress: savedProgress,
+          status: savedStatus,
+          color: res.file_type === 'pdf' ? 'bg-emerald-100 border border-emerald-200' : 
+                 (res.file_type === 'video' || res.file_type === 'video_file') ? 'bg-orange-100 border border-orange-200' :
+                 'bg-indigo-100 border border-indigo-200'
+        };
+      });
+
+      setTasks(backendNotes.slice(0, 4));
+      setNotes(backendNotes.slice(0, 5)); // Show more notes
 
     } catch (err) {
       console.error("Failed to fetch dashboard data", err);
@@ -418,7 +432,7 @@ const StudentDashboard = ({ user, onLogout }) => {
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
         <div className="xl:col-span-5 flex flex-col gap-5">
           <div className="flex justify-between items-center">
-            <h3 className="text-[20px] font-semibold text-slate-800">My tasks</h3>
+            <h3 className="text-[20px] font-semibold text-slate-800">My pending notes</h3>
           </div>
           <div className="flex gap-1.5 p-1 bg-slate-100 rounded-xl w-full">
             {['All task', 'To do', 'In progress', 'Done'].map(tag => (
@@ -441,7 +455,7 @@ const StudentDashboard = ({ user, onLogout }) => {
             ))}
           </div>
           <button className="py-3 rounded-xl bg-white border border-slate-200 text-[12px] font-medium text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-all shadow-sm">
-            View all tasks →
+            View kanban board →
           </button>
         </div>
         <AnimatePresence>
@@ -466,6 +480,52 @@ const StudentDashboard = ({ user, onLogout }) => {
               )}
             </div>
           </div>
+          <div className="flex flex-col gap-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-[20px] font-semibold text-slate-800">My Performance</h3>
+              <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Academic Records</span>
+            </div>
+            <div className="flex gap-4 overflow-x-auto pb-2">
+              {performance.length > 0 ? performance.map(p => (
+                <div key={p.id} className="p-6 rounded-[2rem] bg-indigo-50/50 border border-indigo-100 text-indigo-950 min-w-[280px] shadow-sm flex flex-col gap-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="text-xl font-bold text-indigo-900">{p.exam_title || 'Term Exam'}</h4>
+                      <p className="text-[10px] uppercase font-bold text-indigo-500/80 tracking-widest">Published Result</p>
+                    </div>
+                    <div className="p-2.5 bg-indigo-100 text-indigo-600 rounded-2xl">
+                      <Award size={18} />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-7 mt-2">
+                    <div>
+                      <p className="text-[10px] uppercase font-bold text-indigo-400 mb-1">Grade</p>
+                      <p className="text-3xl font-black text-indigo-900">{p.grade}</p>
+                    </div>
+                    <div className="w-px h-10 bg-indigo-100" />
+                    <div>
+                      <p className="text-[10px] uppercase font-bold text-indigo-400 mb-1">Percentage</p>
+                      <p className="text-3xl font-black text-indigo-900">{p.percentage.toFixed(1)}%</p>
+                    </div>
+                  </div>
+                  <div className="mt-2 space-y-2">
+                    <div className="flex justify-between text-[10px] font-bold text-indigo-500 uppercase">
+                      <span>Total Marks</span>
+                      <span className="text-indigo-900">{p.score} / {p.total_marks}</span>
+                    </div>
+                    <div className="w-full h-2 bg-indigo-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${p.percentage}%` }} />
+                    </div>
+                  </div>
+                </div>
+              )) : (
+                <div className="w-full p-10 bg-slate-50 border border-dashed border-slate-200 rounded-[2rem] text-center">
+                  <p className="text-slate-400 text-sm font-bold">No published results found yet.</p>
+                </div>
+              )}
+            </div>
+          </div>
+          
           <div className="flex flex-col gap-4">
             <div className="flex justify-between items-center">
               <h3 className="text-[20px] font-semibold text-slate-800">My schedule</h3>

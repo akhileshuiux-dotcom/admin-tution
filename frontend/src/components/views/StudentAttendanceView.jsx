@@ -13,19 +13,26 @@ const StudentAttendanceView = ({ user }) => {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ present: 0, absent: 0, late: 0, percentage: 0 });
+  
+  // Filter States
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
     if (user?.id) fetchAttendance();
-  }, [user]);
+  }, [user, startDate, endDate]);
 
   const fetchAttendance = async () => {
     setLoading(true);
     try {
-      // Assuming user.id is the User ID, we need student.id
-      // Profile data usually includes the profile object
       const studentId = user.student_profile?.id || user.id; 
-      const resp = await api.get('/attendance/');
-      const myRecords = resp.data.filter(r => r.student === studentId);
+      
+      const params = { student: studentId };
+      if (startDate) params.date__gte = startDate;
+      if (endDate) params.date__lte = endDate;
+
+      const resp = await api.get('/attendance/', { params });
+      const myRecords = resp.data;
       
       myRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
       setRecords(myRecords);
@@ -47,6 +54,11 @@ const StudentAttendanceView = ({ user }) => {
     const total = data.length;
     s.percentage = total > 0 ? Math.round(((s.present + (s.late * 0.5)) / total) * 100) : 0;
     setStats(s);
+  };
+
+  const clearFilters = () => {
+    setStartDate('');
+    setEndDate('');
   };
 
   return (
@@ -74,9 +86,41 @@ const StudentAttendanceView = ({ user }) => {
 
       {/* History Table */}
       <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 18, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-        <div style={{ padding: '18px 22px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Calendar size={18} color="#6366f1" />
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#1e293b' }}>Attendance History</h3>
+        <div style={{ padding: '18px 22px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Calendar size={18} color="#6366f1" />
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#1e293b' }}>Attendance History</h3>
+          </div>
+
+          {/* Date Filter UI */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f8fafc', padding: '6px 12px', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>From</label>
+              <input 
+                type="date" 
+                value={startDate} 
+                onChange={(e) => setStartDate(e.target.value)}
+                style={{ border: 'none', background: 'transparent', fontSize: 13, color: '#1e293b', fontWeight: 600, outline: 'none' }}
+              />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f8fafc', padding: '6px 12px', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>To</label>
+              <input 
+                type="date" 
+                value={endDate} 
+                onChange={(e) => setEndDate(e.target.value)}
+                style={{ border: 'none', background: 'transparent', fontSize: 13, color: '#1e293b', fontWeight: 600, outline: 'none' }}
+              />
+            </div>
+            {(startDate || endDate) && (
+              <button 
+                onClick={clearFilters}
+                style={{ background: '#fef2f2', color: '#ef4444', border: '1px solid #fee2e2', padding: '8px 12px', borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
+              >
+                Clear
+              </button>
+            )}
+          </div>
         </div>
         
         {loading ? (

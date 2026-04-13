@@ -19,7 +19,7 @@ const InputField = ({ label, icon: Icon, value, onChange, placeholder, type = "t
         placeholder={placeholder}
         style={{
           width: '100%', padding: '10px 12px 10px 38px', borderRadius: 12, border: '1px solid #e2e8f0',
-          fontSize: 14, outline: 'none', background: '#f8fafc', boxSizing: 'border-box'
+          fontSize: 14, outline: 'none', background: '#f8fafc', boxSizing: 'border-box', color: 'black'
         }}
       />
     </div>
@@ -35,7 +35,7 @@ const AdminMeetingsView = () => {
 
   // Form State
   const [form, setForm] = useState({
-    title: '', description: '', date: '', time: '', location: ''
+    title: '', description: '', date: '', time: '', end_time: '', location: '', meeting_type: 'offline', meeting_link: ''
   });
 
   useEffect(() => { 
@@ -50,14 +50,15 @@ const AdminMeetingsView = () => {
   };
 
   const resetForm = () => {
-    setForm({ title: '', description: '', date: '', time: '', location: '' });
+    setForm({ title: '', description: '', date: '', time: '', end_time: '', location: '', meeting_type: 'offline', meeting_link: '' });
     setEditingId(null);
   };
 
   const handleEdit = (m) => {
     setForm({
       title: m.title, description: m.description, 
-      date: m.date, time: m.time, location: m.location
+      date: m.date, time: m.time, end_time: m.end_time || '', location: m.location,
+      meeting_type: m.meeting_type || 'offline', meeting_link: m.meeting_link || ''
     });
     setEditingId(m.id);
     setShowModal(true);
@@ -123,12 +124,22 @@ const AdminMeetingsView = () => {
             </div>
             <div>
               <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#1e293b' }}>{meeting.title}</h3>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '4px 0 0', flexWrap: 'wrap' }}>
                  <Clock size={12} color="#94a3b8" />
-                 <span style={{ fontSize: 12, color: '#64748b' }}>{meeting.date} at {meeting.time}</span>
+                 <span style={{ fontSize: 12, color: '#64748b' }}>{meeting.date} at {meeting.time}{meeting.end_time ? ` - ${meeting.end_time}` : ''}</span>
+                 <span style={{ fontSize: 11, fontWeight: 600, color: meeting.meeting_type === 'online' ? '#059669' : '#64748b', background: meeting.meeting_type === 'online' ? '#d1fae5' : '#f1f5f9', padding: '2px 6px', borderRadius: 4 }}>
+                   Type: {meeting.meeting_type === 'online' ? 'Online' : 'Offline'}
+                 </span>
               </div>
             </div>
             <p style={{ margin: 0, fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>{meeting.description || 'No additional details.'}</p>
+            {meeting.meeting_type === 'online' && meeting.meeting_link && (
+              <div>
+                <a href={meeting.meeting_link} target="_blank" rel="noreferrer" style={{ display: 'inline-block', background: '#ec4899', color: '#fff', textDecoration: 'none', padding: '6px 12px', fontSize: 12, fontWeight: 700, borderRadius: 8 }}>
+                  Join Meeting
+                </a>
+              </div>
+            )}
             <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <MapPin size={14} color="#94a3b8" />
@@ -153,12 +164,29 @@ const AdminMeetingsView = () => {
                 <InputField label="Meeting Title" icon={Info} value={form.title} onChange={e => setForm({...form, title: e.target.value})} required placeholder="e.g. Monthly Staff Briefing" />
                 <InputField label="Description" icon={BookOpen} value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="Agenda and topics..." />
                 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
                    <InputField label="Date" icon={CalendarDays} value={form.date} onChange={e => setForm({...form, date: e.target.value})} required type="date" />
-                   <InputField label="Time" icon={Clock} value={form.time} onChange={e => setForm({...form, time: e.target.value})} required type="time" />
+                   <InputField label="Start Time" icon={Clock} value={form.time} onChange={e => setForm({...form, time: e.target.value})} required type="time" />
+                   <InputField label="End Time" icon={Clock} value={form.end_time} onChange={e => setForm({...form, end_time: e.target.value})} type="time" />
                 </div>
                 
-                <InputField label="Location" icon={MapPin} value={form.location} onChange={e => setForm({...form, location: e.target.value})} placeholder="e.g. Main Hall / Zoom" />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Meeting Type</label>
+                  <select
+                    value={form.meeting_type}
+                    onChange={e => setForm({...form, meeting_type: e.target.value})}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 14, outline: 'none', background: '#f8fafc', color: 'black' }}
+                  >
+                    <option value="offline">Offline Meeting</option>
+                    <option value="online">Online Meeting</option>
+                  </select>
+                </div>
+                
+                {form.meeting_type === 'online' && (
+                  <InputField label="Meeting Link (URL)" icon={Info} value={form.meeting_link} onChange={e => setForm({...form, meeting_link: e.target.value})} placeholder="https://..." />
+                )}
+
+                <InputField label={form.meeting_type === 'online' ? "Platform (optional)" : "Location"} icon={MapPin} value={form.location} onChange={e => setForm({...form, location: e.target.value})} placeholder={form.meeting_type === 'online' ? "e.g. Zoom, Google Meet" : "e.g. Main Hall"} />
 
                 <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
                   <button type="submit" disabled={saving} style={{ flex: 1, padding: '14px', background: '#ec4899', color: '#fff', border: 'none', borderRadius: 14, fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>

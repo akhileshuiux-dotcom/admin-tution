@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Users, Hash, Search } from 'lucide-react';
+import { Send, Users, Hash, Search, Plus, X as CloseIcon, Mic, Image as ImageIcon, Film, MoreHorizontal } from 'lucide-react';
 
 const ROOMS = [
   { id: 1, name: 'Class 9A - General', unread: 3, last: 'Mrs. Goodman: Don\'t forget the test...' },
@@ -19,14 +19,61 @@ const ChatView = ({ user }) => {
   const [activeRoom, setActiveRoom] = useState(ROOMS[0]);
   const [messages, setMessages] = useState(INITIAL_MESSAGES);
   const [input, setInput] = useState('');
+  const [rooms, setRooms] = useState(ROOMS);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [emailInput, setEmailInput] = useState('');
+  const [members, setMembers] = useState([]);
   const bottomRef = useRef(null);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
   const send = () => {
     if (!input.trim()) return;
-    setMessages(m => [...m, { id: m.length + 1, sender: 'Student (You)', text: input.trim(), time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), self: true }]);
+    const senderLabel = user?.role === 'teacher' ? 'Teacher (You)' : 'Student (You)';
+    setMessages(m => [...m, { id: m.length + 1, type: 'text', sender: senderLabel, text: input.trim(), time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), self: true }]);
     setInput('');
+  };
+
+  const sendMedia = (type) => {
+    const senderLabel = user?.role === 'teacher' ? 'Teacher (You)' : 'Student (You)';
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    let newMsg = { id: messages.length + 1, sender: senderLabel, time, self: true, type };
+    
+    if (type === 'image') newMsg.content = 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&auto=format&fit=crop';
+    if (type === 'video') newMsg.content = 'https://www.w3schools.com/html/mov_bbb.mp4';
+    if (type === 'audio') newMsg.content = 'Voice Note (0:12)';
+
+    setMessages(m => [...m, newMsg]);
+  };
+
+  const handleCreateGroup = (e) => {
+    e.preventDefault();
+    if (!newGroupName.trim()) return;
+    const newRoom = {
+      id: rooms.length + 1,
+      name: newGroupName.trim(),
+      unread: 0,
+      last: 'Group created',
+      members: members.length
+    };
+    setRooms([...rooms, newRoom]);
+    setActiveRoom(newRoom);
+    setNewGroupName('');
+    setMembers([]);
+    setShowCreateModal(false);
+  };
+
+  const addMember = () => {
+    if (!emailInput.trim()) return;
+    if (!members.includes(emailInput.trim())) {
+      setMembers([...members, emailInput.trim()]);
+    }
+    setEmailInput('');
+  };
+
+  const removeMember = (email) => {
+    setMembers(members.filter(m => m !== email));
   };
 
   return (
@@ -36,8 +83,8 @@ const ChatView = ({ user }) => {
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-100 rounded-2xl text-[13px] placeholder:text-slate-300 focus:outline-none" placeholder="Search chats..." />
         </div>
-        <div className="flex flex-col gap-1">
-          {ROOMS.map(room => (
+        <div className="flex flex-col gap-1 overflow-y-auto">
+          {rooms.map(room => (
             <motion.button key={room.id} whileHover={{ x: 2 }} onClick={() => setActiveRoom(room)}
               className={`text-left p-3 rounded-2xl transition-all ${activeRoom.id === room.id ? 'bg-slate-900 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}>
               <div className="flex items-center gap-2 mb-0.5">
@@ -49,13 +96,22 @@ const ChatView = ({ user }) => {
             </motion.button>
           ))}
         </div>
+        
+        {user?.role === 'teacher' && (
+          <button 
+            onClick={() => setShowCreateModal(true)}
+            className="mt-2 flex items-center justify-center gap-2 p-3 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 hover:text-slate-600 hover:border-slate-300 transition-all text-[13px] font-semibold"
+          >
+            <Plus className="w-4 h-4" /> Create Group
+          </button>
+        )}
       </div>
       <div className="flex-grow bg-white rounded-3xl border border-slate-100 shadow-sm flex flex-col overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
           <div className="w-9 h-9 bg-slate-100 rounded-xl flex items-center justify-center"><Hash className="w-4 h-4 text-slate-500" /></div>
           <div>
             <h4 className="font-semibold text-[14px] text-slate-900">{activeRoom.name}</h4>
-            <p className="text-[11px] text-slate-400">32 members · Class Group</p>
+            <p className="text-[11px] text-slate-400">{activeRoom.members || 32} members · Class Group</p>
           </div>
           <Users className="w-5 h-5 text-slate-300 ml-auto" />
         </div>
@@ -65,24 +121,136 @@ const ChatView = ({ user }) => {
               <motion.div key={msg.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} layout
                 className={`flex flex-col max-w-[70%] ${msg.self ? 'self-end items-end' : 'self-start items-start'}`}>
                 {!msg.self && <span className={`text-[11px] font-normal mb-1 ${msg.teacher ? 'text-violet-600' : 'text-slate-500'}`}>{msg.sender}</span>}
-                <div className={`px-4 py-3 rounded-2xl text-[13px] font-medium leading-relaxed ${msg.self ? 'bg-slate-900 text-white rounded-br-sm' : 'bg-slate-100 text-slate-800 rounded-bl-sm'}`}>
-                  {msg.text}
-                </div>
+                
+                {msg.type === 'image' ? (
+                  <div className="rounded-2xl overflow-hidden border border-slate-100 shadow-sm mb-1 bg-white p-1">
+                    <img src={msg.content} className="max-w-full rounded-xl" alt="Sent" />
+                  </div>
+                ) : msg.type === 'video' ? (
+                  <div className="rounded-2xl overflow-hidden border border-slate-100 shadow-sm mb-1 bg-black">
+                    <video src={msg.content} controls className="max-w-full" />
+                  </div>
+                ) : msg.type === 'audio' ? (
+                  <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl ${msg.self ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-800'}`}>
+                    <Mic className="w-4 h-4 opacity-60" />
+                    <div className="flex-grow min-w-[120px] h-1 bg-white/20 rounded-full relative overflow-hidden">
+                      <div className="absolute inset-0 bg-blue-400 w-1/3" />
+                    </div>
+                    <span className="text-[11px] font-bold">{msg.content}</span>
+                  </div>
+                ) : (
+                  <div className={`px-4 py-3 rounded-2xl text-[13px] font-medium leading-relaxed ${msg.self ? 'bg-slate-900 text-white rounded-br-sm' : 'bg-slate-100 text-slate-800 rounded-bl-sm'}`}>
+                    {msg.text}
+                  </div>
+                )}
                 <span className="text-[10px] text-slate-400 mt-1">{msg.time}</span>
               </motion.div>
             ))}
           </AnimatePresence>
           <div ref={bottomRef} />
         </div>
-        <div className="px-4 py-3 border-t border-slate-100 flex gap-3">
+        <div className="px-4 py-3 border-t border-slate-100 flex items-center gap-3">
+          <div className="flex items-center gap-1 border-r border-slate-100 pr-2">
+            <button onClick={() => sendMedia('audio')} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-all" title="Send Voice Note">
+              <Mic className="w-4 h-4" />
+            </button>
+            <button onClick={() => sendMedia('image')} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-all" title="Send Photo">
+              <ImageIcon className="w-4 h-4" />
+            </button>
+            <button onClick={() => sendMedia('video')} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-all" title="Send Video">
+              <Film className="w-4 h-4" />
+            </button>
+          </div>
+          
           <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && send()}
-            className="flex-grow bg-slate-50 rounded-2xl px-4 py-2.5 text-[13px] focus:outline-none focus:bg-white border border-transparent focus:border-slate-200 transition-all"
+            className="flex-grow bg-slate-50 rounded-2xl px-4 py-2.5 text-[13px] focus:outline-none focus:bg-white border border-transparent focus:border-slate-200 transition-all font-medium"
             placeholder="Type a message..." />
-          <button onClick={send} className="w-10 h-10 bg-slate-900 text-white rounded-2xl flex items-center justify-center hover:bg-black transition-all">
+          <button onClick={send} className="w-10 h-10 bg-slate-900 text-white rounded-2xl flex items-center justify-center hover:bg-black transition-all shadow-lg shadow-slate-900/10">
             <Send className="w-4 h-4" />
           </button>
         </div>
       </div>
+      {/* Create Group Modal */}
+      <AnimatePresence>
+        {showCreateModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl border border-slate-100"
+            >
+              <h3 className="text-2xl font-black text-slate-900 mb-2">Create New Group</h3>
+              <p className="text-slate-400 text-[13px] mb-8 font-medium">Add a name and invite students to your new class group.</p>
+              
+              <form onSubmit={handleCreateGroup} className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Group Name</label>
+                  <input 
+                    autoFocus
+                    value={newGroupName}
+                    onChange={(e) => setNewGroupName(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-slate-900 placeholder:text-slate-300 outline-none focus:border-blue-500/50 transition-all font-semibold text-[14px]"
+                    placeholder="e.g. Advanced Mathematics"
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Invite Members</label>
+                  <div className="flex gap-2">
+                    <input 
+                      value={emailInput}
+                      onChange={(e) => setEmailInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addMember())}
+                      className="flex-grow bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-slate-900 placeholder:text-slate-300 outline-none focus:border-blue-500/50 transition-all font-semibold text-[14px]"
+                      placeholder="student@example.com"
+                    />
+                    <button 
+                      type="button" 
+                      onClick={addMember}
+                      className="px-6 bg-slate-900 text-white rounded-2xl font-bold text-[13px] hover:bg-black transition-all"
+                    >
+                      Add
+                    </button>
+                  </div>
+
+                  {/* Member Chips */}
+                  <div className="flex flex-wrap gap-2 min-h-[40px] p-2 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                    {members.length === 0 ? (
+                      <span className="text-[12px] text-slate-300 font-medium px-2 py-1">No members added yet</span>
+                    ) : (
+                      members.map(email => (
+                        <span key={email} className="inline-flex items-center gap-2 bg-white border border-slate-100 px-3 py-1.5 rounded-xl text-[12px] font-bold text-slate-700 shadow-sm">
+                          {email}
+                          <button onClick={() => removeMember(email)} className="hover:text-red-500 transition-colors">
+                            <CloseIcon className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))
+                    )}
+                  </div>
+                </div>
+                
+                <div className="flex gap-4 pt-4">
+                  <button 
+                    type="button"
+                    onClick={() => { setShowCreateModal(false); setMembers([]); }}
+                    className="flex-1 py-4 rounded-2xl text-[14px] font-black text-slate-500 hover:bg-slate-50 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit"
+                    className="flex-1 py-4 rounded-2xl text-[14px] font-black bg-slate-900 text-white hover:bg-black transition-all shadow-2xl shadow-slate-900/20"
+                  >
+                    Create Group
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

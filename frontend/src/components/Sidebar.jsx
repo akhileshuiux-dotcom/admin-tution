@@ -10,7 +10,9 @@ import {
   StickyNote, 
   Settings, 
   LogOut,
-  UserCheck
+  UserCheck,
+  BookOpen,
+  Gamepad2
 } from 'lucide-react';
 
 const SidebarItem = ({ icon: Icon, label, active, badge, onClick }) => (
@@ -51,14 +53,15 @@ const Sidebar = ({ activeView = 'Dashboard', onNavigate, onLogout }) => {
         <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest px-4 mb-2">Main</p>
         <SidebarItem icon={LayoutDashboard} label="Dashboard" active={activeView === 'Dashboard'} onClick={() => onNavigate('Dashboard')} />
         <SidebarItem icon={Calendar} label="Schedule" active={activeView === 'Schedule'} onClick={() => onNavigate('Schedule')} />
-        <SidebarItem icon={ClipboardList} label="Tasks" active={activeView === 'Tasks'} badge="3" onClick={() => onNavigate('Tasks')} />
         <SidebarItem icon={FileText} label="Tests" active={activeView === 'Tests'} onClick={() => onNavigate('Tests')} />
+        <SidebarItem icon={Gamepad2} label="Games" active={activeView === 'Games'} onClick={() => onNavigate('Games')} />
         <SidebarItem icon={UserCheck} label="Attendance" active={activeView === 'Attendance'} onClick={() => onNavigate('Attendance')} />
         <SidebarItem icon={BarChart3} label="Reports" active={activeView === 'Reports'} onClick={() => onNavigate('Reports')} />
         
         <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest px-4 mb-2 mt-5">Communication</p>
         <SidebarItem icon={MessageCircle} label="Chat" active={activeView === 'Chat'} badge="12" onClick={() => onNavigate('Chat')} />
-        <SidebarItem icon={StickyNote} label="Notes" active={activeView === 'Notes'} badge="2" onClick={() => onNavigate('Notes')} />
+        <SidebarItem icon={StickyNote} label="Notes" active={activeView === 'Notes'} badge="3" onClick={() => onNavigate('Notes')} />
+        <SidebarItem icon={BookOpen} label="Past Papers" active={activeView === 'PastPapers'} onClick={() => onNavigate('PastPapers')} />
       </nav>
 
       <div className="flex flex-col gap-1 border-t border-slate-100 pt-4">

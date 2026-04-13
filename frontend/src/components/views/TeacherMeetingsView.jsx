@@ -31,12 +31,23 @@ const TeacherMeetingsView = () => {
         <div>
           <p style={{ color:'#1e293b', fontWeight:700, fontSize:15, margin:0 }}>{meeting.title}</p>
           {meeting.description && <p style={{ color:'#64748b', fontSize:13, margin:'4px 0 0', lineHeight:1.5 }}>{meeting.description}</p>}
-          <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:8 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:8, flexWrap:'wrap' }}>
             <CalendarDays size={13} color="#f59e0b" />
             <span style={{ color:'#f59e0b', fontSize:12, fontWeight:600 }}>
               {new Date(meeting.date_time).toLocaleString('en-US', { weekday:'short', year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })}
+              {meeting.end_time ? ` - ${meeting.end_time}` : ''}
+            </span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: meeting.meeting_type === 'online' ? '#059669' : '#64748b', background: meeting.meeting_type === 'online' ? '#d1fae5' : '#f1f5f9', padding: '2px 6px', borderRadius: 4 }}>
+              Type: {meeting.meeting_type === 'online' ? 'Online' : 'Offline'}
             </span>
           </div>
+          {meeting.meeting_type === 'online' && meeting.meeting_link && (
+            <div style={{ marginTop: 10 }}>
+              <a href={meeting.meeting_link} target="_blank" rel="noreferrer" style={{ display: 'inline-block', background: '#ec4899', color: '#fff', textDecoration: 'none', padding: '6px 12px', fontSize: 12, fontWeight: 700, borderRadius: 8 }}>
+                Join Meeting
+              </a>
+            </div>
+          )}
         </div>
       </div>
     </motion.div>

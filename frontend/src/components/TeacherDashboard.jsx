@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  LogOut, GraduationCap,
-  LayoutDashboard, Users, BookOpen, ClipboardList, CalendarDays, UserCircle, UsersRound
+  LogOut, GraduationCap, MessageSquare,
+  LayoutDashboard, Users, BookOpen, ClipboardList, CalendarDays, UserCircle, UsersRound, Video
 } from 'lucide-react';
 import TeacherAttendanceView from './views/TeacherAttendanceView';
 import TeacherNotesView from './views/TeacherNotesView';
@@ -10,15 +10,21 @@ import TeacherExamsView from './views/TeacherExamsView';
 import TeacherMeetingsView from './views/TeacherMeetingsView';
 import TeacherStudentsView from './views/TeacherStudentsView';
 import TeacherProfileView from './views/TeacherProfileView';
+import ChatView from './views/ChatView';
+import TeacherScheduleView from './views/TeacherScheduleView';
+import TeacherPapersView from './views/TeacherPapersView';
 
 const navItems = [
-  { key: 'overview',   label: 'Overview',       icon: LayoutDashboard },
-  { key: 'students',   label: 'Students',       icon: UsersRound },
-  { key: 'attendance', label: 'Attendance',     icon: Users },
-  { key: 'notes',      label: 'Notes',          icon: BookOpen },
-  { key: 'exams',      label: 'Exams & Grades', icon: ClipboardList },
-  { key: 'meetings',   label: 'Meetings',       icon: CalendarDays },
-  { key: 'profile',    label: 'My Profile',     icon: UserCircle },
+  { key: 'overview',  label: 'Overview',                   icon: LayoutDashboard },
+  { key: 'students',  label: 'Students',                   icon: UsersRound },
+  { key: 'attendance',label: 'Attendance',                 icon: Users },
+  { key: 'notes',     label: 'Notes',                      icon: BookOpen },
+  { key: 'past_papers',label: 'Past Papers',               icon: BookOpen },
+  { key: 'chat',      label: 'Chat',                       icon: MessageSquare },
+  { key: 'exams',     label: 'Exams & Grades',             icon: ClipboardList },
+  { key: 'schedule',  label: 'Scheduled Classes & Meeting', icon: Video },
+  { key: 'meetings',  label: 'Meetings',                   icon: CalendarDays },
+  { key: 'profile',   label: 'My Profile',                 icon: UserCircle },
 ];
 
 const S = {
@@ -190,7 +196,10 @@ const TeacherDashboard = ({ user, onLogout }) => {
             {activeTab === 'students'   && <TeacherStudentsView />}
             {activeTab === 'attendance' && <TeacherAttendanceView user={user} />}
             {activeTab === 'notes'      && <TeacherNotesView />}
+            {activeTab === 'past_papers'&& <TeacherPapersView user={user} />}
+            {activeTab === 'chat'       && <ChatView user={user} />}
             {activeTab === 'exams'      && <TeacherExamsView user={user} />}
+            {activeTab === 'schedule'   && <TeacherScheduleView user={user} />}
             {activeTab === 'meetings'   && <TeacherMeetingsView />}
             {activeTab === 'profile'    && <TeacherProfileView user={user} onLogout={onLogout} />}
           </motion.div>

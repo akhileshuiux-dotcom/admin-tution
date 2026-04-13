@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { UsersRound, Search, Phone, BookOpen, Hash, User } from 'lucide-react';
+import { UsersRound, Search, Phone, BookOpen, Hash, User, Mail } from 'lucide-react';
 import api from '../../api';
 
 const TeacherStudentsView = () => {
@@ -26,6 +26,11 @@ const TeacherStudentsView = () => {
     const matchesStatus = !filters.status || s.status === filters.status;
     return matchesSearch && matchesGrade && matchesStatus;
   });
+
+  const uniqueGrades = React.useMemo(() => {
+    const grades = new Set(students.map(s => s.grade).filter(Boolean));
+    return Array.from(grades).sort((a, b) => parseInt(a) - parseInt(b));
+  }, [students]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -54,13 +59,7 @@ const TeacherStudentsView = () => {
             </button>
             {showFilters && (
               <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 8, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: 16, boxShadow: '0 10px 25px rgba(0,0,0,0.1)', zIndex: 100, width: 220, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div>
-                  <label style={{ fontSize: 10, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Grade</label>
-                  <select value={filters.grade} onChange={e => setFilters({...filters, grade: e.target.value})} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13 }}>
-                    <option value="">All Grades</option>
-                    {[...Array(12)].map((_,i) => <option key={i+1} value={`${i+1}th`}>{i+1}th Grade</option>)}
-                  </select>
-                </div>
+
                 <div>
                   <label style={{ fontSize: 10, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Status</label>
                   <select value={filters.status} onChange={e => setFilters({...filters, status: e.target.value})} style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13 }}>
@@ -75,6 +74,37 @@ const TeacherStudentsView = () => {
           </div>
         </div>
       </div>
+
+      {/* Grade Tabs */}
+      {uniqueGrades.length > 0 && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: -4 }}>
+          <button
+            onClick={() => setFilters({ ...filters, grade: '' })}
+            style={{
+              padding: '6px 16px', borderRadius: 20, fontSize: 13, fontWeight: 600, border: '1px solid #e2e8f0',
+              background: filters.grade === '' ? '#6366f1' : '#fff',
+              color: filters.grade === '' ? '#fff' : '#64748b',
+              cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+            }}
+          >
+            All Grades
+          </button>
+          {uniqueGrades.map(grade => (
+            <button
+              key={grade}
+              onClick={() => setFilters({ ...filters, grade })}
+              style={{
+                padding: '6px 16px', borderRadius: 20, fontSize: 13, fontWeight: 600, border: '1px solid #e2e8f0',
+                background: filters.grade === grade ? '#6366f1' : '#fff',
+                color: filters.grade === grade ? '#fff' : '#64748b',
+                cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+              }}
+            >
+              {grade}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* List */}
       {loading ? (
@@ -108,6 +138,7 @@ const TeacherStudentsView = () => {
                       <Detail icon={Hash} label="Student ID" value={s.student_id} />
                       <Detail icon={BookOpen} label="Grade" value={s.grade} />
                       <Detail icon={User} label="Parent Name" value={s.parent_name} />
+                      <Detail icon={Mail} label="Email" value={s.user?.email} />
                       <Detail icon={Phone} label="Parent Contact" value={s.parent_contact} />
                       <Detail icon={BookOpen} label="Subjects" value={s.subjects?.map(sub => sub.name).join(', ')} />
                       <Detail icon={BookOpen} label="Bio" value={s.bio} />

@@ -6,20 +6,25 @@ import {
 } from 'lucide-react';
 import api from '../../api';
 
-const InputField = ({ label, icon: Icon, value, onChange, placeholder, type = "text", required = false }) => (
+const InputField = ({ label, icon: Icon, value, onChange, placeholder, type = "text", required = false, readOnly, disabled }) => (
   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
     <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</label>
     <div style={{ position: 'relative' }}>
       <Icon style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} size={16} />
       <input
         required={required}
+        readOnly={readOnly}
+        disabled={disabled}
         type={type}
         value={value}
         onChange={onChange}
         placeholder={placeholder}
         style={{
           width: '100%', padding: '10px 12px 10px 38px', borderRadius: 12, border: '1px solid #e2e8f0',
-          fontSize: 14, outline: 'none', background: '#f8fafc', boxSizing: 'border-box'
+          fontSize: 14, outline: 'none', background: (readOnly || disabled) ? '#f1f5f9' : '#f8fafc', 
+          color: (readOnly || disabled) ? '#94a3b8' : '#1e293b', 
+          boxSizing: 'border-box',
+          cursor: (readOnly || disabled) ? 'not-allowed' : 'text'
         }}
       />
     </div>
@@ -39,7 +44,7 @@ const AdminTeachersView = () => {
   // Form State
   const [form, setForm] = useState({
     user: { username: '', email: '', first_name: '', last_name: '', password: 'Teacher@123' },
-    employee_id: '', specialization: '', bio: '', status: 'active'
+    employee_id: '', specialization: '', bio: '', status: 'active', monthly_salary: 0
   });
 
   useEffect(() => { fetchTeachers(); }, []);
@@ -54,7 +59,7 @@ const AdminTeachersView = () => {
   const resetForm = () => {
     setForm({
       user: { username: '', email: '', first_name: '', last_name: '', password: 'Teacher@123' },
-      employee_id: '', specialization: '', bio: ''
+      employee_id: '', specialization: '', bio: '', monthly_salary: 0
     });
     setEditingId(null);
   };
@@ -66,7 +71,8 @@ const AdminTeachersView = () => {
         first_name: t.user.first_name, last_name: t.user.last_name,
         password: ''
       },
-      employee_id: t.employee_id, specialization: t.specialization, bio: t.bio, status: t.status || 'active'
+      employee_id: t.employee_id, specialization: t.specialization, bio: t.bio, 
+      status: t.status || 'active', monthly_salary: t.monthly_salary || 0
     });
     setEditingId(t.id);
     setShowModal(true);
@@ -280,18 +286,26 @@ const AdminTeachersView = () => {
                   <InputField label="Last Name" icon={GraduationCap} value={form.user.last_name} onChange={e => setForm({ ...form, user: { ...form.user, last_name: e.target.value } })} required />
                   <InputField label="Email Address" icon={Mail} value={form.user.email} onChange={e => setForm({ ...form, user: { ...form.user, email: e.target.value } })} required type="email" />
                   {!editingId && <InputField label="Portal Password" icon={Hash} value={form.user.password} onChange={e => setForm({ ...form, user: { ...form.user, password: e.target.value } })} required />}
-                  <InputField label="Employee ID" icon={Hash} value={form.employee_id} onChange={e => setForm({ ...form, employee_id: e.target.value })} required placeholder="EMP-2024-XXX" />
+                  <InputField 
+                    label="Employee ID" 
+                    icon={Hash} 
+                    value={editingId ? form.employee_id : ''} 
+                    onChange={e => setForm({ ...form, employee_id: e.target.value })} 
+                    disabled={!editingId}
+                    placeholder={editingId ? "e.g. EMP-12345" : "(System Generated)"} 
+                  />
                   <InputField label="Specialization" icon={Briefcase} value={form.specialization} onChange={e => setForm({ ...form, specialization: e.target.value })} placeholder="Mathematics, Science, etc." />
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</label>
                     <select 
                       value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1px solid #e2e8f0', background: '#f8fafc', fontSize: 14, outline: 'none' }}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#1e293b', fontSize: 14, outline: 'none' }}
                     >
                       <option value="active">Active</option>
                       <option value="inactive">Inactive</option>
                     </select>
                   </div>
+                  <InputField label="Monthly Base Salary ($)" icon={Plus} value={form.monthly_salary} onChange={e => setForm({ ...form, monthly_salary: e.target.value })} type="number" required placeholder="e.g. 2000" />
                   <div style={{ gridColumn: 'span 2' }}>
                     <InputField label="Biography" icon={BookOpen} value={form.bio} onChange={e => setForm({ ...form, bio: e.target.value })} placeholder="Brief teacher biography..." />
                   </div>

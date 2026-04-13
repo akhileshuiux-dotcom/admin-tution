@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, Users, GraduationCap, BookOpen, 
-  CalendarDays, Settings, LogOut, ShieldCheck, 
-  Menu, X, ChevronRight, Bell, CreditCard
+  CalendarDays, CreditCard, ShieldCheck, Award,
+  Menu, X, ChevronRight, Bell, LogOut
 } from 'lucide-react';
 
 // Import Views (to be created)
@@ -13,6 +13,7 @@ import AdminTeachersView from './views/AdminTeachersView';
 import AdminCoursesView from './views/AdminCoursesView';
 import AdminMeetingsView from './views/AdminMeetingsView';
 import AdminFinanceView from './views/AdminFinanceView';
+import ResultsEntryView from './views/ResultsEntryView';
 
 const AdminDashboard = ({ user, onLogout }) => {
   const [activeTab, setActiveTab] = useState('Overview');
@@ -25,6 +26,7 @@ const AdminDashboard = ({ user, onLogout }) => {
     { id: 'Courses', icon: BookOpen, label: 'Curriculum', color: '#f59e0b' },
     { id: 'Meetings', icon: CalendarDays, label: 'Admin Meetings', color: '#ec4899' },
     { id: 'Finance', icon: CreditCard, label: 'Payment & Finance', color: '#10b981' },
+    { id: 'Results', icon: Award, label: 'Exam Results', color: '#facc15' },
   ];
 
   const renderContent = () => {
@@ -35,6 +37,7 @@ const AdminDashboard = ({ user, onLogout }) => {
       case 'Courses':  return <AdminCoursesView />;
       case 'Meetings': return <AdminMeetingsView />;
       case 'Finance':  return <AdminFinanceView />;
+      case 'Results':  return <ResultsEntryView user={user} />;
       default: return <AdminOverviewView user={user} />;
     }
   };

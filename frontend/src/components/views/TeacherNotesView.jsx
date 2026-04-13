@@ -1,12 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { BookOpen, Plus, Trash2, Link, FileText, Video } from 'lucide-react';
 import api from '../../api';
 
+/* ─── Type/Section configs (unchanged) ─── */
 const typeConfig = {
-  pdf:   { label: 'PDF',   icon: FileText, color: '#ef4444' },
-  video: { label: 'Video', icon: Video,    color: '#8b5cf6' },
-  link:  { label: 'Link',  icon: Link,     color: '#0ea5e9' },
+  pdf:        { label: 'PDF',          icon: FileText, color: '#ef4444' },
+  video:      { label: 'Video Link',   icon: Video,    color: '#8b5cf6' },
+  video_file: { label: 'Video Upload', icon: Video,    color: '#f97316' },
+  link:       { label: 'Link',         icon: Link,     color: '#0ea5e9' },
+};
+
+const sectionColors = {
+  notes: '#f8fafc', syllabus: '#f0f9ff', assignment: '#fef2f2',
+  reference: '#f0fdf4', video: '#fff7ed', general: '#f8fafc',
+};
+
+const sectionText = {
+  notes: 'Notes', syllabus: 'Syllabus', assignment: 'Assignment',
+  reference: 'Reference', video: 'Videos', general: 'General',
 };
 
 const inputStyle = {
@@ -19,27 +31,38 @@ const TeacherNotesView = () => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ title: '', resource_type: 'link', url: '', course: '' });
+  const [form, setForm] = useState({ title: '', file_type: 'pdf', url: '', course: '', section: 'notes' });
+  const [selectedFile, setSelectedFile] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { fetchData(); }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [r, c] = await Promise.all([
-        api.get(`/resources/`),
-        api.get(`/courses/`),
-      ]);
+      const [r, c] = await Promise.all([api.get('/resources/'), api.get('/courses/')]);
       setResources(r.data); setCourses(c.data);
     } catch (e) { console.error(e); } finally { setLoading(false); }
-  };
+  }, []);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const save = async (e) => {
     e.preventDefault(); setSaving(true);
     try {
-      await api.post(`/resources/`, form);
-      setShowForm(false); setForm({ title: '', resource_type: 'link', url: '', course: '' }); fetchData();
+      const data = new FormData();
+      data.append('title', form.title);
+      data.append('file_type', form.file_type);
+      data.append('course', form.course);
+      data.append('section', form.section);
+      if (selectedFile) data.append('file', selectedFile);
+      else data.append('url', form.url);
+      await api.post('/resources/', data, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setShowForm(false);
+      setForm({ title: '', file_type: 'pdf', url: '', course: '', section: 'notes' });
+      setSelectedFile(null);
+      fetchData();
+    } catch (err) {
+      console.error('Save error:', err.response?.data || err.message);
+      alert('Failed to save resource. Please check all fields.');
     } finally { setSaving(false); }
   };
 
@@ -79,29 +102,48 @@ const TeacherNotesView = () => {
             </div>
             <div>
               <label style={{ color: '#64748b', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>Type</label>
-              <select value={form.resource_type} onChange={e => setForm(v => ({ ...v, resource_type: e.target.value }))} style={inputStyle}>
-                <option value="link">Link</option>
-                <option value="pdf">PDF</option>
-                <option value="video">Video</option>
+              <select value={form.file_type} onChange={e => setForm(v => ({ ...v, file_type: e.target.value }))} style={inputStyle}>
+                <option value="pdf">PDF Document</option>
+                <option value="video">Video Link</option>
+                <option value="video_file">Video Upload</option>
               </select>
             </div>
-            <div style={{ gridColumn: '1/-1' }}>
-              <label style={{ color: '#64748b', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>URL</label>
-              <input required value={form.url} onChange={e => setForm(v => ({ ...v, url: e.target.value }))} placeholder="https://..." style={inputStyle} />
+            <div>
+              <label style={{ color: '#64748b', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>Section</label>
+              <select value={form.section} onChange={e => setForm(v => ({ ...v, section: e.target.value }))} style={inputStyle}>
+                <option value="notes">Class Notes</option>
+                <option value="syllabus">Syllabus</option>
+                <option value="assignment">Assignments</option>
+                <option value="reference">Reference</option>
+                <option value="video">Videos</option>
+                <option value="general">General</option>
+              </select>
             </div>
-            <div style={{ gridColumn: '1/-1' }}>
+            <div>
               <label style={{ color: '#64748b', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>Assign to Course</label>
               <select value={form.course} onChange={e => setForm(v => ({ ...v, course: e.target.value }))} style={inputStyle}>
                 <option value="">— General —</option>
                 {courses.map(c => <option key={c.id} value={c.id}>{c.title || c.name}</option>)}
               </select>
             </div>
+            <div style={{ gridColumn: '1/-1' }}>
+              <label style={{ color: '#64748b', fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>
+                {form.file_type === 'pdf' ? 'Upload PDF File' : form.file_type === 'video_file' ? 'Upload Video File' : 'Resource URL'}
+              </label>
+              {form.file_type === 'pdf' || form.file_type === 'video_file' ? (
+                <input type="file" accept={form.file_type === 'pdf' ? '.pdf' : 'video/*'} onChange={e => setSelectedFile(e.target.files[0])} style={{ ...inputStyle, padding: '7px 12px' }} />
+              ) : (
+                <input required value={form.url} onChange={e => setForm(v => ({ ...v, url: e.target.value }))} placeholder="https://..." style={inputStyle} />
+              )}
+            </div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button type="submit" disabled={saving} style={{ padding: '9px 20px', background: '#8b5cf6', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-              {saving ? 'Saving…' : 'Upload Resource'}
+            <button type="submit" disabled={saving}
+              style={{ padding: '9px 20px', background: '#8b5cf6', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+              {saving ? 'Uploading…' : 'Upload Resource'}
             </button>
-            <button type="button" onClick={() => setShowForm(false)} style={{ padding: '9px 20px', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 10, color: '#64748b', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+            <button type="button" onClick={() => { setShowForm(false); setSelectedFile(null); }}
+              style={{ padding: '9px 20px', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 10, color: '#64748b', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
               Cancel
             </button>
           </div>
@@ -118,19 +160,29 @@ const TeacherNotesView = () => {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {resources.map((res, i) => {
-            const cfg = typeConfig[res.resource_type] || typeConfig.link;
+            const cfg = typeConfig[res.file_type] || typeConfig.link;
             const Icon = cfg.icon;
+            const finalUrl = res.file || res.url;
             return (
               <motion.div key={res.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
                 style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <Icon size={20} color={cfg.color} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: cfg.color + '15', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon size={18} color={cfg.color} />
+                  </div>
                   <div>
-                    <p style={{ color: '#1e293b', fontWeight: 600, fontSize: 14, margin: 0 }}>{res.title}</p>
-                    <a href={res.url} target="_blank" rel="noreferrer" style={{ color: '#94a3b8', fontSize: 12, textDecoration: 'none', display: 'block', maxWidth: 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{res.url}</a>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <p style={{ color: '#1e293b', fontWeight: 700, fontSize: 14, margin: 0 }}>{res.title}</p>
+                      <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', padding: '2px 8px', borderRadius: 6, background: sectionColors[res.section] || '#f1f5f9', color: '#64748b', border: '1px solid #e2e8f0' }}>
+                        {sectionText[res.section] || 'General'}
+                      </span>
+                    </div>
+                    <a href={finalUrl} target="_blank" rel="noreferrer" style={{ color: '#94a3b8', fontSize: 12, textDecoration: 'none', display: 'block', marginTop: 2 }}>
+                      {res.file ? '📄 Download Attachment' : '🔗 Open Link'}
+                    </a>
                   </div>
                 </div>
-                <button onClick={() => del(res.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#cbd5e1', padding: 4 }}>
+                <button onClick={() => del(res.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#cbd5e1', padding: 8, borderRadius: 8, transition: 'all 0.2s' }}>
                   <Trash2 size={17} />
                 </button>
               </motion.div>
