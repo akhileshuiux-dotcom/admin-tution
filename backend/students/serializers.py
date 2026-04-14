@@ -70,7 +70,8 @@ class StudentSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'user', 'student_id', 'grade', 'enrolled_date', 'bio', 'points', 'parent_name', 'parent_contact', 'medical_info',
             'subjects', 'subject_ids', 'plan_type', 'syllabus', 'sessions_per_week', 'location', 
-            'learning_goals', 'special_requirements', 'status', 'plan_status', 'payments', 'monthly_fee'
+            'learning_goals', 'special_requirements', 'status', 'plan_status', 'payments', 'monthly_fee',
+            'assigned_teacher', 'lead_source', 'reference_by'
         ]
 
     def create(self, validated_data):

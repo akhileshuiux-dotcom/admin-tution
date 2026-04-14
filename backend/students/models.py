@@ -14,13 +14,15 @@ class Student(models.Model):
         ('inactive', 'Inactive'),
     )
     PLAN_STATUS_CHOICES = (
-        ('new', 'New'),
+        ('lead', 'Lead'),
         ('active', 'Active'),
         ('pending_renewal', 'Pending Renewal'),
+        ('discontinued', 'Discontinued'),
+        # old choices kept below for db integrity if any exist, but they are removed from UI
+        ('new', 'New'),
         ('inactive', 'Inactive'),
         ('completed', 'Completed'),
         ('scheduled_leave', 'Scheduled Leave'),
-        ('discontinued', 'Discontinued'),
     )
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='student_profile')
@@ -44,6 +46,10 @@ class Student(models.Model):
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='active')
     plan_status = models.CharField(max_length=20, choices=PLAN_STATUS_CHOICES, default='new')
     monthly_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    
+    assigned_teacher = models.ForeignKey('Teacher', on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_students')
+    lead_source = models.CharField(max_length=100, blank=True)
+    reference_by = models.CharField(max_length=100, blank=True)
 
     def save(self, *args, **kwargs):
         if not self.student_id:

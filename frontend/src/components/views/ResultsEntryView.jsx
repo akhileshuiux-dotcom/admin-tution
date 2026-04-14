@@ -34,6 +34,7 @@ const AdminResultsView = ({ user }) => {
   // Entry Form State
   const [showEntryModal, setShowEntryModal] = useState(false);
   const [selectedGrade, setSelectedGrade] = useState('All');
+  const [selectedYear, setSelectedYear] = useState('All');
   const [currentResult, setCurrentResult] = useState({
     student: '',
     exam: '',
@@ -145,6 +146,7 @@ const AdminResultsView = ({ user }) => {
   };
 
   const stats = calculateTotals();
+  const availableYears = ['All', ...[...new Set(results.filter(r => r.submitted_at).map(r => new Date(r.submitted_at).getFullYear()))].sort((a,b) => b - a)];
 
   return (
     <div className="flex flex-col gap-8 max-w-[1400px] mx-auto p-4">
@@ -162,20 +164,34 @@ const AdminResultsView = ({ user }) => {
       </div>
 
       {/* Filter Bar */}
-      <div className="flex gap-2 p-2 bg-white rounded-3xl border border-slate-100 shadow-sm overflow-x-auto no-scrollbar">
-        {['All', ...new Set(students.map(s => s.grade))].sort().map(grade => (
-          <button
-            key={grade}
-            onClick={() => setSelectedGrade(grade)}
-            className={`px-6 py-2 rounded-2xl text-xs font-black transition-all ${
-              selectedGrade === grade 
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' 
-                : 'text-slate-500 hover:bg-slate-50'
-            }`}
-          >
-            {grade === 'All' ? 'View All' : `Standard: ${grade}`}
-          </button>
-        ))}
+      <div className="flex justify-between items-center bg-white rounded-3xl border border-slate-100 shadow-sm p-2 overflow-x-auto no-scrollbar gap-4">
+        <div className="flex gap-2 min-w-max">
+          {['All', ...new Set(students.map(s => s.grade))].sort().map(grade => (
+            <button
+              key={grade}
+              onClick={() => setSelectedGrade(grade)}
+              className={`px-6 py-2 rounded-2xl text-xs font-black transition-all ${
+                selectedGrade === grade 
+                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' 
+                  : 'text-slate-500 hover:bg-slate-50'
+              }`}
+            >
+              {grade === 'All' ? 'View All' : `Standard: ${grade}`}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-3 pr-2 min-w-max border-l border-slate-100 pl-4">
+           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Academic Year / Session:</label>
+           <select 
+             value={selectedYear} 
+             onChange={e => setSelectedYear(e.target.value)}
+             className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-black text-slate-700 outline-none hover:border-indigo-200 transition-all cursor-pointer"
+           >
+             {availableYears.map(year => (
+               <option key={year} value={year}>{year === 'All' ? 'All Years' : year}</option>
+             ))}
+           </select>
+        </div>
       </div>
 
       {/* Main Content Table */}
@@ -197,9 +213,14 @@ const AdminResultsView = ({ user }) => {
               <tr><td colSpan={7} className="py-24 text-center text-slate-400">Loading records...</td></tr>
             ) : results
                 .filter(r => {
-                  if (selectedGrade === 'All') return true;
-                  const student = students.find(s => s.id === r.student);
-                  return student?.grade === selectedGrade;
+                  if (selectedGrade !== 'All') {
+                    const student = students.find(s => s.id === r.student);
+                    if (student?.grade !== selectedGrade) return false;
+                  }
+                  if (selectedYear !== 'All') {
+                    if (!r.submitted_at || new Date(r.submitted_at).getFullYear().toString() !== selectedYear.toString()) return false;
+                  }
+                  return true;
                 })
                 .map((r) => (
               <tr key={r.id} className="hover:bg-slate-50/50 transition-colors">
@@ -236,7 +257,10 @@ const AdminResultsView = ({ user }) => {
                 </td>
                 <td className="px-10 py-6 text-right">
                   <div className="flex justify-end gap-2">
-                    <button className="p-3 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-indigo-600 transition-all">
+                    <button 
+                      onClick={() => handleEditResult(r)}
+                      className="p-3 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-indigo-600 transition-all"
+                    >
                       <Eye size={16} />
                     </button>
                   </div>

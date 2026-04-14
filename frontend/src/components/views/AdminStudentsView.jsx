@@ -45,10 +45,12 @@ const SelectField = ({ label, icon: Icon, value, onChange, options, required = f
 );
 
 const StatusBadge = ({ status, type = "general" }) => {
+  if (status === 'new') status = 'lead';
+  
   const styles = {
     active: 'bg-emerald-100 text-emerald-700 border-emerald-200',
     inactive: 'bg-slate-100 text-slate-600 border-slate-200',
-    new: 'bg-blue-100 text-blue-700 border-blue-200',
+    lead: 'bg-blue-100 text-blue-700 border-blue-200',
     pending_renewal: 'bg-amber-100 text-amber-700 border-amber-200',
     completed: 'bg-indigo-100 text-indigo-700 border-indigo-200',
     scheduled_leave: 'bg-purple-100 text-purple-700 border-purple-200',
@@ -279,9 +281,11 @@ const StudentProfile = ({ student, onClose, onEdit }) => {
 const AdminStudentsView = () => {
   const [students, setStudents] = useState([]);
   const [subjects, setSubjects] = useState([]);
+  const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [filters, setFilters] = useState({ status: '', grade: '', subjects: '' });
+  const [filters, setFilters] = useState({ status: '', grade: '', subjects: '', year: '' });
+  const [lifecycleTab, setLifecycleTab] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [editingId, setEditingId] = useState(null);
@@ -294,12 +298,14 @@ const AdminStudentsView = () => {
     student_id: '', grade: '', parent_name: '', parent_contact: '', bio: '', medical_info: '',
     subject_ids: [], plan_type: 'one-on-one', syllabus: '', sessions_per_week: 1,
     location: '', learning_goals: '', special_requirements: '',
-    status: 'active', plan_status: 'new'
+    status: 'active', plan_status: 'lead',
+    assigned_teacher: '', lead_source: 'Walk-in', reference_by: ''
   });
 
   useEffect(() => { 
     fetchStudents(); 
     fetchSubjects();
+    fetchTeachers();
   }, []);
 
   const fetchStudents = async () => {
@@ -310,6 +316,7 @@ const AdminStudentsView = () => {
       if (filters.status) url += `&status=${filters.status}`;
       if (filters.grade) url += `&grade=${filters.grade}`;
       if (filters.subjects) url += `&subjects=${filters.subjects}`;
+      if (lifecycleTab) url += `&plan_status=${lifecycleTab}`;
       
       const resp = await api.get(url);
       setStudents(resp.data);
@@ -327,12 +334,19 @@ const AdminStudentsView = () => {
     } catch (e) {}
   };
 
+  const fetchTeachers = async () => {
+    try {
+      const resp = await api.get('/teachers/');
+      setTeachers(resp.data);
+    } catch (e) {}
+  };
+
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
       fetchStudents();
     }, 500);
     return () => clearTimeout(delayDebounceFn);
-  }, [search, filters]);
+  }, [search, filters, lifecycleTab]);
 
   const resetForm = () => {
     setForm({
@@ -340,7 +354,8 @@ const AdminStudentsView = () => {
       student_id: '', grade: '', parent_name: '', parent_contact: '', bio: '', medical_info: '',
       subject_ids: [], plan_type: 'one-on-one', syllabus: '', sessions_per_week: 1,
       location: '', learning_goals: '', special_requirements: '',
-      status: 'active', plan_status: 'new'
+      status: 'active', plan_status: 'lead',
+      assigned_teacher: '', lead_source: 'Walk-in', reference_by: ''
     });
     setEditingId(null);
   };
@@ -357,7 +372,8 @@ const AdminStudentsView = () => {
       subject_ids: s.subjects?.map(sub => sub.id) || [],
       plan_type: s.plan_type, syllabus: s.syllabus, sessions_per_week: s.sessions_per_week,
       location: s.location, learning_goals: s.learning_goals, special_requirements: s.special_requirements,
-      status: s.status, plan_status: s.plan_status
+      status: s.status, plan_status: s.plan_status,
+      assigned_teacher: s.assigned_teacher || '', lead_source: s.lead_source || 'Walk-in', reference_by: s.reference_by || ''
     });
     setEditingId(s.id);
     setShowModal(true);
@@ -372,6 +388,8 @@ const AdminStudentsView = () => {
         ...form,
         sessions_per_week: parseInt(form.sessions_per_week) || 1
       };
+      
+      if (!payload.assigned_teacher) payload.assigned_teacher = null;
       
       // Sync username with email for authentication
       if (!payload.user.username) {
@@ -396,6 +414,15 @@ const AdminStudentsView = () => {
     await api.delete(`/students/${id}/`);
     fetchStudents();
   };
+
+  const availableYears = [...new Set(students.filter(s => s.enrolled_date).map(s => String(new Date(s.enrolled_date).getFullYear())))].sort((a,b) => b - a);
+
+  const visibleStudents = students.filter(s => {
+    if (filters.year && s.enrolled_date) {
+      if (String(new Date(s.enrolled_date).getFullYear()) !== String(filters.year)) return false;
+    }
+    return true;
+  });
 
   return (
     <div className="flex flex-col gap-8 max-w-[1400px] mx-auto p-4">
@@ -424,14 +451,6 @@ const AdminStudentsView = () => {
           />
         </div>
         <div className="flex gap-3">
-          <select 
-            value={filters.status} onChange={e => setFilters({...filters, status: e.target.value})}
-            className="bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-xs font-black text-slate-600 outline-none hover:border-indigo-100 transition-all"
-          >
-            <option value="">Status: All</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
           <div className="relative">
             <button 
               onClick={() => setShowFilters(!showFilters)}
@@ -454,11 +473,25 @@ const AdminStudentsView = () => {
                     <div className="flex justify-between items-center pb-4 border-b border-slate-50">
                       <h4 className="text-sm font-black text-slate-900">Refine Search</h4>
                       <button 
-                        onClick={() => setFilters({ status: '', grade: '', subjects: '' })}
+                        onClick={() => setFilters({ status: '', grade: '', subjects: '', year: '' })}
                         className="text-[10px] font-bold text-indigo-600 uppercase hover:underline"
                       >
                         Reset All
                       </button>
+                    </div>
+
+                    {/* Operational Status Filter */}
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Operational Status</label>
+                       <select 
+                         value={filters.status} 
+                         onChange={e => setFilters({...filters, status: e.target.value})}
+                         className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-xs font-bold text-slate-700 outline-none"
+                       >
+                         <option value="">All Statuses</option>
+                         <option value="active">Active</option>
+                         <option value="inactive">Inactive</option>
+                       </select>
                     </div>
 
                     {/* Grade Filter */}
@@ -492,6 +525,21 @@ const AdminStudentsView = () => {
                        </select>
                     </div>
 
+                    {/* Enrollment Year Filter */}
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Enrollment Year</label>
+                       <select 
+                         value={filters.year} 
+                         onChange={e => setFilters({...filters, year: e.target.value})}
+                         className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-xs font-bold text-slate-700 outline-none"
+                       >
+                         <option value="">All Years</option>
+                         {availableYears.map(y => (
+                           <option key={y} value={y}>{y}</option>
+                         ))}
+                       </select>
+                    </div>
+
                     <button 
                       onClick={() => setShowFilters(false)}
                       className="w-full py-3 bg-slate-900 text-white rounded-xl text-xs font-black shadow-lg hover:bg-slate-800 transition-all"
@@ -506,6 +554,16 @@ const AdminStudentsView = () => {
         </div>
       </div>
 
+      {/* Tabs Configuration */}
+      <div className="flex gap-2 overflow-x-auto pb-2 -mt-2">
+         <TabButton active={lifecycleTab === ''} onClick={() => setLifecycleTab('')} icon={Users} label="All Students" />
+         <TabButton active={lifecycleTab === 'lead'} onClick={() => setLifecycleTab('lead')} icon={Target} label="Lead" />
+         <TabButton active={lifecycleTab === 'active'} onClick={() => setLifecycleTab('active')} icon={CheckCircle} label="Active" />
+         <TabButton active={lifecycleTab === 'completed'} onClick={() => setLifecycleTab('completed')} icon={GraduationCap} label="Completed" />
+         <TabButton active={lifecycleTab === 'pending_renewal'} onClick={() => setLifecycleTab('pending_renewal')} icon={Clock} label="Pending Renewal" />
+         <TabButton active={lifecycleTab === 'discontinued'} onClick={() => setLifecycleTab('discontinued')} icon={X} label="Discontinued" />
+      </div>
+
       {/* Table */}
       <div className="bg-white rounded-[3rem] border border-slate-100 shadow-2xl overflow-hidden">
         <table className="w-full text-left">
@@ -515,13 +573,14 @@ const AdminStudentsView = () => {
               <th className="px-10 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest">Parent Details</th>
               <th className="px-10 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest">Course / Subjects</th>
               <th className="px-10 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">Status</th>
+              <th className="px-10 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">Lifecycle State</th>
               <th className="px-10 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Operations</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
             {loading ? (
-              <tr><td colSpan={4} className="py-24 text-center"><div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto opacity-20" /></td></tr>
-            ) : students.map((s) => (
+              <tr><td colSpan={6} className="py-24 text-center"><div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto opacity-20" /></td></tr>
+            ) : visibleStudents.map((s) => (
               <tr key={s.id} className="hover:bg-slate-50/50 transition-colors group cursor-pointer" onClick={() => setSelectedStudent(s)}>
                 <td className="px-10 py-6">
                   <div className="flex items-center gap-5">
@@ -549,6 +608,9 @@ const AdminStudentsView = () => {
                 </td>
                 <td className="px-10 py-6 text-center">
                    <StatusBadge status={s.status} />
+                </td>
+                <td className="px-10 py-6 text-center">
+                   <StatusBadge status={s.plan_status} />
                 </td>
                 <td className="px-10 py-6 text-right" onClick={e => e.stopPropagation()}>
                   <div className="flex justify-flex-end gap-2">
@@ -614,6 +676,54 @@ const AdminStudentsView = () => {
                     <InputField label="Sessions/Week" icon={Clock} type="number" value={form.sessions_per_week} onChange={e => setForm({...form, sessions_per_week: e.target.value})} required />
                     <InputField label="Syllabus" icon={BookOpen} value={form.syllabus} onChange={e => setForm({...form, syllabus: e.target.value})} placeholder="IB, IGCSE, NCERT..." />
                     <InputField label="Location/Center" icon={MapPin} value={form.location} onChange={e => setForm({...form, location: e.target.value})} placeholder="Main Wing, Online..." />
+                    
+                    <SelectField
+                      label="Assigned Teacher" icon={Users} value={form.assigned_teacher}
+                      onChange={e => setForm({...form, assigned_teacher: e.target.value})}
+                      options={[
+                        {value: '', label: 'Select Teacher (Optional)'},
+                        ...teachers.map(t => ({ value: t.id, label: `${t.user.first_name} ${t.user.last_name}` }))
+                      ]}
+                    />
+
+                    <div className="flex flex-col gap-2 flex-1">
+                        <SelectField
+                          label="Lead Source" icon={MapPin} 
+                          value={["Walk-in", "Parent Reference", "Student Reference", "Social Media", "Advertisement", "Website", "Existing Student Referral", "Teacher Referral"].includes(form.lead_source) ? form.lead_source : "Other"}
+                          onChange={e => setForm({...form, lead_source: e.target.value === 'Other' ? '' : e.target.value})}
+                          options={[
+                            {value: 'Walk-in', label: 'Walk-in'},
+                            {value: 'Parent Reference', label: 'Parent Reference'},
+                            {value: 'Student Reference', label: 'Student Reference'},
+                            {value: 'Social Media', label: 'Social Media'},
+                            {value: 'Advertisement', label: 'Advertisement'},
+                            {value: 'Website', label: 'Website'},
+                            {value: 'Existing Student Referral', label: 'Existing Student Referral'},
+                            {value: 'Teacher Referral', label: 'Teacher Referral'},
+                            {value: 'Other', label: 'Other (Specify below)'}
+                          ]}
+                        />
+                        { !["Walk-in", "Parent Reference", "Student Reference", "Social Media", "Advertisement", "Website", "Existing Student Referral", "Teacher Referral"].includes(form.lead_source) && (
+                          <input 
+                            type="text"
+                            value={form.lead_source === 'Other' ? '' : form.lead_source}
+                            onChange={e => setForm({...form, lead_source: e.target.value})}
+                            placeholder="Please type your custom lead source..."
+                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-500 transition-all font-bold"
+                            autoFocus
+                          />
+                        )}
+                        { ["Parent Reference", "Student Reference", "Existing Student Referral", "Teacher Referral"].includes(form.lead_source) && (
+                          <input 
+                            type="text"
+                            value={form.reference_by}
+                            onChange={e => setForm({...form, reference_by: e.target.value})}
+                            placeholder="Type Reference Name..."
+                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-500 transition-all font-bold mt-1"
+                            autoFocus
+                          />
+                        )}
+                    </div>
                     
                     <div className="col-span-2 space-y-2">
                       <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Subjects Enrolled</label>
@@ -681,12 +791,9 @@ const AdminStudentsView = () => {
                       label="Lifecycle State" icon={Calendar} value={form.plan_status} 
                       onChange={e => setForm({...form, plan_status: e.target.value})}
                       options={[
-                        {value: 'new', label: 'New'},
-                        {value: 'active', label: 'Active'},
-                        {value: 'pending_renewal', label: 'Pending Renewal'},
-                        {value: 'inactive', label: 'Inactive'},
+                        {value: 'lead', label: 'Lead'},
                         {value: 'completed', label: 'Completed'},
-                        {value: 'scheduled_leave', label: 'Scheduled Leave'},
+                        {value: 'pending_renewal', label: 'Pending Renewal'},
                         {value: 'discontinued', label: 'Discontinued'}
                       ]}
                     />
