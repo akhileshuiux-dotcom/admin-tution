@@ -2,21 +2,51 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --page-bg: #f8fafc;
+  --sidebar-bg: #ffffff;
+  --sidebar-border: #e2e8f0;
+  --card-bg: #ffffff;
+  --card-border: #e2e8f0;
+  --card-shadow: 0 4px 14px rgba(0,0,0,0.03);
+  --card-glow: none;
+  --text-main: #1e293b;
+  --text-muted: #64748b;
+  --text-muted-lighter: #94a3b8;
+  --nav-active-bg: #ecfdf5;
+  --nav-active-text: #059669;
+  --nav-inactive-text: #64748b;
+  --input-bg: #f8fafc;
+  --input-border: #e2e8f0;
+  --header-bg: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  --header-text: #ffffff;
+}
+
+html.dark {
+  --page-bg: #0B1220;
+  --sidebar-bg: #0F172A;
+  --sidebar-border: rgba(255,255,255,0.05);
+  --card-bg: #162033;
+  --card-border: rgba(255,255,255,0.1);
+  --card-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  --card-glow: 0 0 20px rgba(16, 185, 129, 0.05);
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-muted-lighter: #cbd5e1;
+  --nav-active-bg: rgba(16, 185, 129, 0.1);
+  --nav-active-text: #10b981;
+  --nav-inactive-text: #94a3b8;
+  --input-bg: #1e293b;
+  --input-border: rgba(255,255,255,0.1);
+  --header-bg: linear-gradient(135deg, #111827 0%, #1e293b 100%);
+  --header-text: #ffffff;
+}
+
 @layer base {
   body {
-    @apply bg-white text-slate-900 overflow-x-hidden;
+    background-color: var(--page-bg);
+    color: var(--text-main);
+    @apply overflow-x-hidden transition-colors duration-300;
     min-height: 100vh;
   }
-}
-
-.glass {
-  @apply bg-white border border-slate-200 shadow-sm backdrop-blur-none;
-}
-
-.glow-cyan {
-  box-shadow: 0 0 20px rgba(6, 182, 212, 0.2), inset 0 0 10px rgba(6, 182, 212, 0.1);
-}
-
-.glow-violet {
-  box-shadow: 0 0 20px rgba(139, 92, 246, 0.2), inset 0 0 10px rgba(139, 92, 246, 0.1);
 }

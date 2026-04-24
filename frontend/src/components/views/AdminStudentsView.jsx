@@ -9,58 +9,60 @@ import {
 import api from '../../api';
 
 // Reusable Components
-const InputField = ({ label, icon: Icon, value, onChange, placeholder, type = "text", required = false }) => (
-  <div className="flex flex-col gap-1.5 flex-1">
-    <label className="text-[10px] font-black text-slate-950 uppercase tracking-widest ml-1">{label}</label>
+const InputField = ({ label, icon: Icon, value, onChange, placeholder, type = "text", required = false, readOnly }) => (
+  <div className="flex flex-col gap-2 flex-1 min-w-[240px]">
+    <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">{label}</label>
     <div className="relative">
-      <Icon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+      <Icon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
       <input
         required={required}
+        readOnly={readOnly}
         type={type}
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-11 pr-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 transition-all"
+        className="w-full bg-slate-50/50 border border-slate-200 rounded-2xl pl-12 pr-4 py-4 text-[15px] font-bold text-slate-800 placeholder-slate-400 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/5 transition-all shadow-sm"
       />
     </div>
   </div>
 );
 
 const SelectField = ({ label, icon: Icon, value, onChange, options, required = false }) => (
-  <div className="flex flex-col gap-1.5 flex-1">
-    <label className="text-[10px] font-black text-slate-950 uppercase tracking-widest ml-1">{label}</label>
-    <div className="relative">
-      <Icon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+  <div className="flex flex-col gap-2 flex-1 min-w-[240px]">
+    <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">{label}</label>
+    <div className="relative group">
+      <Icon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors" size={18} />
       <select
         required={required}
         value={value}
         onChange={onChange}
-        className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-11 pr-4 py-3 text-sm text-slate-900 outline-none focus:border-indigo-500 transition-all appearance-none"
+        className="w-full bg-slate-50/50 border border-slate-200 rounded-2xl pl-12 pr-10 py-4 text-[15px] font-bold text-slate-800 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/5 transition-all appearance-none shadow-sm cursor-pointer"
       >
         {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
       </select>
-      <Filter className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
+      <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-hover:translate-y-[-40%] transition-transform">
+         <Filter size={14} />
+      </div>
     </div>
   </div>
 );
 
-const StatusBadge = ({ status, type = "general" }) => {
-  if (status === 'new') status = 'lead';
-  
+const StatusBadge = ({ status }) => {
   const styles = {
-    active: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-    inactive: 'bg-slate-100 text-slate-600 border-slate-200',
-    lead: 'bg-blue-100 text-blue-700 border-blue-200',
-    pending_renewal: 'bg-amber-100 text-amber-700 border-amber-200',
-    completed: 'bg-indigo-100 text-indigo-700 border-indigo-200',
-    scheduled_leave: 'bg-purple-100 text-purple-700 border-purple-200',
-    discontinued: 'bg-rose-100 text-rose-700 border-rose-200',
+    active: 'bg-emerald-50 text-emerald-600 border-emerald-100 shadow-emerald-500/5',
+    inactive: 'bg-slate-50 text-slate-500 border-slate-100 shadow-slate-500/5',
+    lead: 'bg-blue-50 text-blue-600 border-blue-100 shadow-blue-500/5',
+    pending_renewal: 'bg-amber-50 text-amber-600 border-amber-100 shadow-amber-500/5',
+    completed: 'bg-indigo-50 text-indigo-600 border-indigo-100 shadow-indigo-500/5',
+    discontinued: 'bg-rose-50 text-rose-600 border-rose-100 shadow-rose-500/5',
   };
   
-  const label = status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+  const normalizedStatus = status === 'new' ? 'lead' : status;
+  const label = normalizedStatus.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
   
   return (
-    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${styles[status] || styles.inactive}`}>
+    <span className={`px-4 py-1.5 rounded-xl text-[11px] font-black border uppercase tracking-widest transition-all ${styles[normalizedStatus] || styles.inactive} shadow-sm inline-flex items-center gap-1.5`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${normalizedStatus === 'active' ? 'bg-emerald-500' : 'bg-current'} opacity-80`} />
       {label}
     </span>
   );
@@ -164,6 +166,10 @@ const StudentProfile = ({ student, onClose, onEdit }) => {
                           <p className="text-[10px] font-bold text-slate-500 uppercase">Sessions/Week</p>
                           <p className="text-sm font-black text-slate-800">{student.sessions_per_week}</p>
                         </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-slate-500 uppercase">Batch</p>
+                          <p className="text-sm font-black text-slate-800">{student.batch || 'Not assigned'}</p>
+                        </div>
                         <div className="col-span-2">
                           <p className="text-[10px] font-bold text-slate-500 uppercase">Syllabus</p>
                           <p className="text-sm font-black text-slate-800">{student.syllabus || 'Not specified'}</p>
@@ -195,6 +201,13 @@ const StudentProfile = ({ student, onClose, onEdit }) => {
                           <div>
                             <p className="text-[10px] font-bold text-slate-400 uppercase">Location</p>
                             <p className="text-sm font-black text-slate-800">{student.location || 'Not recorded'}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-4 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm col-span-1">
+                          <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-600"><MapPin size={18} /></div>
+                          <div>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase">Permanent Address</p>
+                            <p className="text-sm font-black text-slate-800 leading-relaxed">{student.permanent_address || 'Address not provided'}</p>
                           </div>
                         </div>
                       </div>
@@ -299,7 +312,8 @@ const AdminStudentsView = () => {
     subject_ids: [], plan_type: 'one-on-one', syllabus: '', sessions_per_week: 1,
     location: '', learning_goals: '', special_requirements: '',
     status: 'active', plan_status: 'lead',
-    assigned_teacher: '', lead_source: 'Walk-in', reference_by: ''
+    assigned_teacher: '', lead_source: 'Walk-in', reference_by: '',
+    batch: 'Morning Batch', permanent_address: ''
   });
 
   useEffect(() => { 
@@ -355,7 +369,8 @@ const AdminStudentsView = () => {
       subject_ids: [], plan_type: 'one-on-one', syllabus: '', sessions_per_week: 1,
       location: '', learning_goals: '', special_requirements: '',
       status: 'active', plan_status: 'lead',
-      assigned_teacher: '', lead_source: 'Walk-in', reference_by: ''
+      assigned_teacher: '', lead_source: 'Walk-in', reference_by: '',
+      batch: 'Morning Batch', permanent_address: ''
     });
     setEditingId(null);
   };
@@ -373,7 +388,8 @@ const AdminStudentsView = () => {
       plan_type: s.plan_type, syllabus: s.syllabus, sessions_per_week: s.sessions_per_week,
       location: s.location, learning_goals: s.learning_goals, special_requirements: s.special_requirements,
       status: s.status, plan_status: s.plan_status,
-      assigned_teacher: s.assigned_teacher || '', lead_source: s.lead_source || 'Walk-in', reference_by: s.reference_by || ''
+      assigned_teacher: s.assigned_teacher || '', lead_source: s.lead_source || 'Walk-in', reference_by: s.reference_by || '',
+      batch: s.batch || 'Morning Batch', permanent_address: s.permanent_address || ''
     });
     setEditingId(s.id);
     setShowModal(true);
@@ -425,197 +441,174 @@ const AdminStudentsView = () => {
   });
 
   return (
-    <div className="flex flex-col gap-8 max-w-[1400px] mx-auto p-4">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {/* Header */}
-      <div className="flex justify-between items-center bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-xl shadow-slate-200/50">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
         <div>
-          <h2 className="text-4xl font-black text-slate-900 tracking-tight">Student Hub</h2>
-          <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mt-2 ml-1 italic">Manage your future stars</p>
+          <h2 style={{ fontSize: 24, fontWeight: 800, color: '#1e293b', margin: 0 }}>Student Hub</h2>
+          <p style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600, marginTop: 4 }}>Manage student enrollment, profiles and academic status</p>
         </div>
-        <button 
-          onClick={() => { resetForm(); setShowModal(true); }}
-          className="flex items-center gap-3 px-8 py-4 bg-[#4f46e5] text-white rounded-3xl font-black shadow-2xl shadow-indigo-200 hover:scale-[1.02] active:scale-[0.98] transition-all"
-        >
-          <UserPlus size={20} /> Register Student
-        </button>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <div style={{ background: '#f8fafc', padding: '8px 16px', borderRadius: 14, border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Enrolled: {students.length}</span>
+          </div>
+          <button
+            onClick={() => { resetForm(); setShowModal(true); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', background: '#0ea5e9',
+              color: '#fff', borderRadius: 14, border: 'none', fontWeight: 700, cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(14,165,233,0.2)'
+            }}
+          >
+            <UserPlus size={18} /> Register Student
+          </button>
+        </div>
       </div>
 
       {/* Toolbar */}
-      <div className="flex gap-4 items-center bg-white p-6 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-100/30">
-        <div className="flex-1 relative">
-          <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-500 z-10" size={20} />
-          <input 
+      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 18, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 12, background: '#f8fafc', padding: '8px 16px', borderRadius: 12, border: '1px solid #e2e8f0' }}>
+          <Search size={18} color="#94a3b8" />
+          <input
             value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search by identity, phone or email..." 
-            className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-16 pr-6 py-4 text-slate-900 placeholder:text-slate-500 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/5 transition-all font-bold" 
+            placeholder="Search students by name, ID, phone or email..."
+            style={{ background: 'none', border: 'none', outline: 'none', flex: 1, color: '#1e293b', fontSize: 14 }}
           />
         </div>
-        <div className="flex gap-3">
-          <div className="relative">
-            <button 
-              onClick={() => setShowFilters(!showFilters)}
-              className={`p-4 rounded-2xl border transition-all ${showFilters ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-white border-slate-200 text-slate-400 hover:text-slate-900'}`}
-            >
-              <Filter size={20} />
-            </button>
-
-            {/* Filter Overlay */}
-            <AnimatePresence>
-              {showFilters && (
-                <>
-                  <div className="fixed inset-0 z-[80]" onClick={() => setShowFilters(false)} />
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute right-0 mt-3 w-80 bg-white rounded-3xl shadow-2xl border border-slate-100 p-6 z-[90] space-y-6"
-                  >
-                    <div className="flex justify-between items-center pb-4 border-b border-slate-50">
-                      <h4 className="text-sm font-black text-slate-900">Refine Search</h4>
-                      <button 
-                        onClick={() => setFilters({ status: '', grade: '', subjects: '', year: '' })}
-                        className="text-[10px] font-bold text-indigo-600 uppercase hover:underline"
-                      >
-                        Reset All
-                      </button>
-                    </div>
-
-                    {/* Operational Status Filter */}
-                    <div className="space-y-2">
-                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Operational Status</label>
-                       <select 
-                         value={filters.status} 
-                         onChange={e => setFilters({...filters, status: e.target.value})}
-                         className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-xs font-bold text-slate-700 outline-none"
-                       >
-                         <option value="">All Statuses</option>
-                         <option value="active">Active</option>
-                         <option value="inactive">Inactive</option>
-                       </select>
-                    </div>
-
-                    {/* Grade Filter */}
-                    <div className="space-y-2">
-                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Grade Level</label>
-                       <select 
-                         value={filters.grade} 
-                         onChange={e => setFilters({...filters, grade: e.target.value})}
-                         className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-xs font-bold text-slate-700 outline-none"
-                       >
-                         <option value="">All Grades</option>
-                         {['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th', '11th', '12th'].map(g => (
-                           <option key={g} value={g}>Grade {g}</option>
-                         ))}
-                         <option value="12+">University / Other</option>
-                       </select>
-                    </div>
-
-                    {/* Subjects Filter */}
-                    <div className="space-y-2">
-                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Subject Focus</label>
-                       <select 
-                         value={filters.subjects} 
-                         onChange={e => setFilters({...filters, subjects: e.target.value})}
-                         className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-xs font-bold text-slate-700 outline-none"
-                       >
-                         <option value="">All Subjects</option>
-                         {subjects.map(s => (
-                           <option key={s.id} value={s.id}>{s.name}</option>
-                         ))}
-                       </select>
-                    </div>
-
-                    {/* Enrollment Year Filter */}
-                    <div className="space-y-2">
-                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Enrollment Year</label>
-                       <select 
-                         value={filters.year} 
-                         onChange={e => setFilters({...filters, year: e.target.value})}
-                         className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-xs font-bold text-slate-700 outline-none"
-                       >
-                         <option value="">All Years</option>
-                         {availableYears.map(y => (
-                           <option key={y} value={y}>{y}</option>
-                         ))}
-                       </select>
-                    </div>
-
+        <select 
+          value={lifecycleTab} onChange={e => setLifecycleTab(e.target.value)}
+          style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: '10px 16px', fontSize: 13, fontWeight: 700, color: '#64748b', outline: 'none' }}
+        >
+          <option value="">All States</option>
+          <option value="lead">Lead</option>
+          <option value="active">Active</option>
+          <option value="completed">Completed</option>
+          <option value="pending_renewal">Renewal</option>
+          <option value="discontinued">Discontinued</option>
+        </select>
+        <select 
+          value={filters.grade} onChange={e => setFilters({...filters, grade: e.target.value})}
+          style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: '10px 16px', fontSize: 13, fontWeight: 700, color: '#64748b', outline: 'none' }}
+        >
+          <option value="">All Standards</option>
+          {['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th', '11th', '12th', '12+'].map(g => (
+            <option key={g} value={g}>Standard {g}</option>
+          ))}
+        </select>
+        <div style={{ position: 'relative' }}>
+          <button 
+            onClick={() => setShowFilters(!showFilters)}
+            style={{ 
+              padding: '10px 20px', borderRadius: 12, border: '1px solid #e2e8f0', 
+              background: showFilters ? '#0ea5e9' : '#fff', color: showFilters ? '#fff' : '#64748b',
+              display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14, fontWeight: 700
+            }}
+          >
+            <Filter size={18} /> More Filters
+          </button>
+          <AnimatePresence>
+            {showFilters && (
+              <>
+                <div onClick={() => setShowFilters(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+                <motion.div 
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  style={{ 
+                    position: 'absolute', right: 0, top: 'calc(100% + 12px)', width: 280, background: '#fff', 
+                    borderRadius: 20, border: '1px solid #e2e8f0', padding: 24, zIndex: 50, boxShadow: '0 25px 50px -12px rgba(0,0,0,0.15)'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                    <h4 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: '#1e293b' }}>Advanced Filters</h4>
                     <button 
-                      onClick={() => setShowFilters(false)}
-                      className="w-full py-3 bg-slate-900 text-white rounded-xl text-xs font-black shadow-lg hover:bg-slate-800 transition-all"
-                    >
-                      Apply Filters
-                    </button>
-                  </motion.div>
-                </>
-              )}
-            </AnimatePresence>
-          </div>
+                      onClick={() => setFilters({ status: '', grade: '', subjects: '', year: '' })}
+                      style={{ border: 'none', background: 'none', color: '#0ea5e9', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0 }}
+                    >Reset All</button>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <label style={{ fontSize: 11, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</label>
+                      <select 
+                        value={filters.status} onChange={e => setFilters({ ...filters, status: e.target.value })}
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: 12, border: '1px solid #e2e8f0', background: '#f8fafc', fontSize: 14, outline: 'none', color: '#1e293b' }}
+                      >
+                        <option value="">All Statuses</option>
+                        <option value="active">Active Only</option>
+                        <option value="inactive">Inactive Only</option>
+                      </select>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <label style={{ fontSize: 11, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Enrollment Year</label>
+                      <select 
+                        value={filters.year} onChange={e => setFilters({ ...filters, year: e.target.value })}
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: 12, border: '1px solid #e2e8f0', background: '#f8fafc', fontSize: 14, outline: 'none', color: '#1e293b' }}
+                      >
+                        <option value="">All Years</option>
+                        {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
-      {/* Tabs Configuration */}
-      <div className="flex gap-2 overflow-x-auto pb-2 -mt-2">
-         <TabButton active={lifecycleTab === ''} onClick={() => setLifecycleTab('')} icon={Users} label="All Students" />
-         <TabButton active={lifecycleTab === 'lead'} onClick={() => setLifecycleTab('lead')} icon={Target} label="Lead" />
-         <TabButton active={lifecycleTab === 'active'} onClick={() => setLifecycleTab('active')} icon={CheckCircle} label="Active" />
-         <TabButton active={lifecycleTab === 'completed'} onClick={() => setLifecycleTab('completed')} icon={GraduationCap} label="Completed" />
-         <TabButton active={lifecycleTab === 'pending_renewal'} onClick={() => setLifecycleTab('pending_renewal')} icon={Clock} label="Pending Renewal" />
-         <TabButton active={lifecycleTab === 'discontinued'} onClick={() => setLifecycleTab('discontinued')} icon={X} label="Discontinued" />
-      </div>
-
-      {/* Table */}
-      <div className="bg-white rounded-[3rem] border border-slate-100 shadow-2xl overflow-hidden">
-        <table className="w-full text-left">
+      {/* Table Container */}
+      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 24, overflow: 'hidden' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead>
-            <tr className="bg-slate-50 border-b border-slate-200">
-              <th className="px-10 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest">Student & Mail</th>
-              <th className="px-10 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest">Parent Details</th>
-              <th className="px-10 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest">Course / Subjects</th>
-              <th className="px-10 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">Status</th>
-              <th className="px-10 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">Lifecycle State</th>
-              <th className="px-10 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Operations</th>
+            <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+              <th style={{ padding: '16px 24px', fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Student Profiles</th>
+              <th style={{ padding: '16px 24px', fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Guardian Info</th>
+              <th style={{ padding: '16px 24px', fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Standard</th>
+              <th style={{ padding: '16px 24px', fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Status</th>
+              <th style={{ padding: '16px 24px', fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-50">
+          <tbody>
             {loading ? (
-              <tr><td colSpan={6} className="py-24 text-center"><div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto opacity-20" /></td></tr>
-            ) : visibleStudents.map((s) => (
-              <tr key={s.id} className="hover:bg-slate-50/50 transition-colors group cursor-pointer" onClick={() => setSelectedStudent(s)}>
-                <td className="px-10 py-6">
-                  <div className="flex items-center gap-5">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 text-white flex items-center justify-center text-xl font-black shadow-lg shadow-indigo-100">
-                      {s.user?.first_name?.[0]}
+              <tr><td colSpan={5} style={{ padding: 60, textAlign: 'center', color: '#94a3b8' }}>Loading directory...</td></tr>
+            ) : visibleStudents.length === 0 ? (
+              <tr><td colSpan={5} style={{ padding: 60, textAlign: 'center', color: '#94a3b8' }}>No students found.</td></tr>
+            ) : visibleStudents.map((s, idx) => (
+              <tr 
+                key={s.id} 
+                onClick={() => setSelectedStudent(s)}
+                style={{ borderBottom: idx < visibleStudents.length - 1 ? '1px solid #f1f5f9' : 'none', transition: 'background 0.2s', cursor: 'pointer' }}
+                className="hover:bg-slate-50"
+              >
+                <td style={{ padding: '16px 24px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 14, background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', color: '#fff', display: 'flex', alignItems: 'center', justifyCenter: 'center', fontWeight: 800, fontSize: 18, shadow: '0 4px 12px rgba(99,102,241,0.15)' }}>
+                       <div className="flex items-center justify-center w-full h-full">{s.user?.first_name?.[0]}</div>
                     </div>
                     <div>
-                      <p className="font-black text-slate-900 text-base">{s.user?.first_name} {s.user?.last_name}</p>
-                      <p className="text-xs text-indigo-500 font-bold">{s.user?.email}</p>
+                      <p style={{ margin: 0, fontWeight: 700, color: '#1e293b', fontSize: 14 }}>{s.user?.first_name} {s.user?.last_name}</p>
+                      <p style={{ margin: 0, color: '#94a3b8', fontSize: 12 }}>{s.student_id}</p>
                     </div>
                   </div>
                 </td>
-                <td className="px-10 py-6">
-                  <p className="text-sm font-black text-slate-800">{s.parent_name || 'N/A'}</p>
-                  <p className="text-xs text-slate-500 font-bold">{s.parent_contact || 'No contact'}</p>
+                <td style={{ padding: '16px 24px' }}>
+                  <p style={{ margin: 0, fontWeight: 600, color: '#1e293b', fontSize: 14 }}>{s.parent_name || '—'}</p>
+                  <p style={{ margin: 0, color: '#94a3b8', fontSize: 12 }}>{s.parent_contact || 'No Contact'}</p>
                 </td>
-                <td className="px-10 py-6">
-                  <div className="flex flex-wrap gap-1 max-w-[200px]">
-                    {s.subjects?.slice(0, 3).map(sub => (
-                      <span key={sub.id} className="px-2 py-0.5 bg-slate-100 text-[10px] font-bold text-slate-600 rounded-md border border-slate-200 mb-1">{sub.name}</span>
-                    ))}
-                    {s.subjects?.length > 3 && <span className="text-[10px] text-slate-400 font-bold">+{s.subjects.length - 3} more</span>}
+                <td style={{ padding: '16px 24px' }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#4338ca', background: '#eef2ff', padding: '4px 10px', borderRadius: 8 }}>Standard {s.grade}</span>
+                </td>
+                <td style={{ padding: '16px 24px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <StatusBadge status={s.status} />
                   </div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mt-1">Grade {s.grade}</p>
                 </td>
-                <td className="px-10 py-6 text-center">
-                   <StatusBadge status={s.status} />
-                </td>
-                <td className="px-10 py-6 text-center">
-                   <StatusBadge status={s.plan_status} />
-                </td>
-                <td className="px-10 py-6 text-right" onClick={e => e.stopPropagation()}>
-                  <div className="flex justify-flex-end gap-2">
-                    <button onClick={() => handleEdit(s)} className="p-3 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-indigo-600 hover:border-indigo-600 transition-all"><Edit2 size={16} /></button>
-                    <button onClick={() => del(s.id)} className="p-3 bg-white border border-rose-100 rounded-xl text-rose-400 hover:bg-rose-50 transition-all"><Trash2 size={16} /></button>
+                <td style={{ padding: '16px 24px', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                    <button onClick={() => handleEdit(s)} title="Edit" style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Edit2 size={14} />
+                    </button>
+                    <button onClick={() => del(s.id)} title="Delete" style={{ width: 34, height: 34, borderRadius: 10, border: '1px solid #fee2e2', background: '#fff', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Trash2 size={14} />
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -635,178 +628,189 @@ const AdminStudentsView = () => {
           <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-6 overflow-y-auto">
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
               className="bg-white rounded-[3rem] w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl border border-white/20">
-              <div className="px-10 py-8 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white/80 backdrop-blur-md z-10">
-                <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">{editingId ? 'Refine Profile' : 'Student Onboarding'}</h3>
-                <button onClick={() => setShowModal(false)} className="p-3 bg-slate-100 rounded-2xl hover:bg-slate-200 transition-all"><X size={20} color="#64748b" /></button>
-              </div>
-              <form onSubmit={save} className="p-10 flex flex-col gap-10">
-                {/* Section: Identity */}
-                <div className="space-y-6">
-                  <h4 className="text-xs font-black text-indigo-500 uppercase tracking-[0.2em] flex items-center gap-2">
-                    <span className="w-8 h-px bg-indigo-500/20" /> Identity Information
-                  </h4>
-                  <div className="grid grid-cols-2 gap-6">
-                    <InputField label="First Name" icon={Users} value={form.user.first_name} onChange={e => setForm({...form, user: {...form.user, first_name: e.target.value}})} required />
-                    <InputField label="Last Name" icon={Users} value={form.user.last_name} onChange={e => setForm({...form, user: {...form.user, last_name: e.target.value}})} required />
-                    <InputField label="Official Email" icon={Mail} value={form.user.email} onChange={e => setForm({...form, user: {...form.user, email: e.target.value}})} required type="email" />
-                    {!editingId && <InputField label="Portal Password" icon={Hash} value={form.user.password} onChange={e => setForm({...form, user: {...form.user, password: e.target.value}})} required />}
-                    <InputField label="Student ID" icon={Hash} value={form.student_id} onChange={e => setForm({...form, student_id: e.target.value})} placeholder="Auto-gen if empty" />
-                    <InputField label="Grade Level" icon={GraduationCap} value={form.grade} onChange={e => setForm({...form, grade: e.target.value})} required placeholder="e.g. 10th" />
-                    <InputField label="Parent/Guardian Name" icon={Users} value={form.parent_name} onChange={e => setForm({...form, parent_name: e.target.value})} placeholder="Full Name" />
-                    <InputField label="Parent Contact" icon={Phone} value={form.parent_contact} onChange={e => setForm({...form, parent_contact: e.target.value})} placeholder="+1 234..." />
-                  </div>
+              <div className="px-12 py-10 border-b border-slate-50 flex justify-between items-center bg-gradient-to-r from-slate-50 to-white sticky top-0 z-10">
+                <div>
+                  <h3 className="text-3xl font-black text-slate-900 uppercase tracking-tight leading-none">{editingId ? 'Refine Profile' : 'Onboard Student'}</h3>
+                  <p className="text-slate-400 text-xs font-bold mt-2 uppercase tracking-[0.2em]">{editingId ? 'Update existing credentials' : 'Initialize system enrollment lifecycle'}</p>
                 </div>
-
-                {/* Section: Academic Plan */}
-                <div className="space-y-6">
-                  <h4 className="text-xs font-black text-indigo-500 uppercase tracking-[0.2em] flex items-center gap-2">
-                    <span className="w-8 h-px bg-indigo-500/20" /> Academic Strategy
-                  </h4>
-                  <div className="grid grid-cols-2 gap-6">
-                    <SelectField 
-                      label="Plan Type" icon={ClipboardList} value={form.plan_type} 
-                      onChange={e => setForm({...form, plan_type: e.target.value})}
-                      options={[
-                        {value: 'one-on-one', label: 'One-on-One'},
-                        {value: 'batch', label: 'Batch'},
-                        {value: 'twin', label: 'Twin'},
-                        {value: 'revision', label: 'Revision'}
-                      ]}
-                    />
-                    <InputField label="Sessions/Week" icon={Clock} type="number" value={form.sessions_per_week} onChange={e => setForm({...form, sessions_per_week: e.target.value})} required />
-                    <InputField label="Syllabus" icon={BookOpen} value={form.syllabus} onChange={e => setForm({...form, syllabus: e.target.value})} placeholder="IB, IGCSE, NCERT..." />
-                    <InputField label="Location/Center" icon={MapPin} value={form.location} onChange={e => setForm({...form, location: e.target.value})} placeholder="Main Wing, Online..." />
-                    
-                    <SelectField
-                      label="Assigned Teacher" icon={Users} value={form.assigned_teacher}
-                      onChange={e => setForm({...form, assigned_teacher: e.target.value})}
-                      options={[
-                        {value: '', label: 'Select Teacher (Optional)'},
-                        ...teachers.map(t => ({ value: t.id, label: `${t.user.first_name} ${t.user.last_name}` }))
-                      ]}
-                    />
-
-                    <div className="flex flex-col gap-2 flex-1">
-                        <SelectField
-                          label="Lead Source" icon={MapPin} 
-                          value={["Walk-in", "Parent Reference", "Student Reference", "Social Media", "Advertisement", "Website", "Existing Student Referral", "Teacher Referral"].includes(form.lead_source) ? form.lead_source : "Other"}
-                          onChange={e => setForm({...form, lead_source: e.target.value === 'Other' ? '' : e.target.value})}
-                          options={[
-                            {value: 'Walk-in', label: 'Walk-in'},
-                            {value: 'Parent Reference', label: 'Parent Reference'},
-                            {value: 'Student Reference', label: 'Student Reference'},
-                            {value: 'Social Media', label: 'Social Media'},
-                            {value: 'Advertisement', label: 'Advertisement'},
-                            {value: 'Website', label: 'Website'},
-                            {value: 'Existing Student Referral', label: 'Existing Student Referral'},
-                            {value: 'Teacher Referral', label: 'Teacher Referral'},
-                            {value: 'Other', label: 'Other (Specify below)'}
-                          ]}
-                        />
-                        { !["Walk-in", "Parent Reference", "Student Reference", "Social Media", "Advertisement", "Website", "Existing Student Referral", "Teacher Referral"].includes(form.lead_source) && (
-                          <input 
-                            type="text"
-                            value={form.lead_source === 'Other' ? '' : form.lead_source}
-                            onChange={e => setForm({...form, lead_source: e.target.value})}
-                            placeholder="Please type your custom lead source..."
-                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-500 transition-all font-bold"
-                            autoFocus
-                          />
-                        )}
-                        { ["Parent Reference", "Student Reference", "Existing Student Referral", "Teacher Referral"].includes(form.lead_source) && (
-                          <input 
-                            type="text"
-                            value={form.reference_by}
-                            onChange={e => setForm({...form, reference_by: e.target.value})}
-                            placeholder="Type Reference Name..."
-                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-500 transition-all font-bold mt-1"
-                            autoFocus
-                          />
-                        )}
+                <button 
+                  onClick={() => setShowModal(false)} 
+                  className="w-14 h-14 bg-white border border-slate-100 rounded-[1.2rem] flex items-center justify-center hover:bg-rose-50 hover:text-rose-500 hover:border-rose-100 transition-all shadow-sm"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+              {/* Form Content */}
+              <div className="flex-1 overflow-y-auto">
+                <form onSubmit={save} className="p-12 space-y-16">
+                  {/* Section 1: Identity & Access */}
+                  <div className="space-y-10">
+                    <div className="flex items-center gap-4">
+                       <span className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-black">01</span>
+                       <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">Identity & Access Control</h4>
+                       <div className="flex-1 h-px bg-slate-100" />
                     </div>
-                    
-                    <div className="col-span-2 space-y-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Subjects Enrolled</label>
-                      <div className="flex flex-wrap gap-2 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                        {subjects.map(s => (
-                          <button
-                            key={s.id} type="button"
-                            onClick={() => {
-                              const news = form.subject_ids.includes(s.id) 
-                                ? form.subject_ids.filter(id => id !== s.id)
-                                : [...form.subject_ids, s.id];
-                              setForm({...form, subject_ids: news});
-                            }}
-                            className={`px-4 py-2 rounded-xl text-[11px] font-bold transition-all border ${
-                              form.subject_ids.includes(s.id) 
-                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg' 
-                                : 'bg-white text-slate-500 border-slate-200 hover:border-indigo-300'
-                            }`}
-                          >
-                            {s.name}
-                          </button>
-                        ))}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                      <InputField label="First Name" icon={Users} value={form.user.first_name} onChange={e => setForm({...form, user: {...form.user, first_name: e.target.value}})} required />
+                      <InputField label="Last Name" icon={Users} value={form.user.last_name} onChange={e => setForm({...form, user: {...form.user, last_name: e.target.value}})} required />
+                      <InputField label="Official Email" icon={Mail} value={form.user.email} onChange={e => setForm({...form, user: {...form.user, email: e.target.value}})} required type="email" />
+                      {!editingId && <InputField label="Access Key (Pass)" icon={Hash} value={form.user.password} onChange={e => setForm({...form, user: {...form.user, password: e.target.value}})} required />}
+                      <InputField label="Internal ID" icon={Hash} value={form.student_id} onChange={e => setForm({...form, student_id: e.target.value})} placeholder="System Generated" />
+                      <InputField label="Target Standard" icon={GraduationCap} value={form.grade} onChange={e => setForm({...form, grade: e.target.value})} required placeholder="e.g. 10th" />
+                    </div>
+                  </div>
+
+                  {/* Section 2: Guardian & Contact */}
+                  <div className="space-y-10">
+                    <div className="flex items-center gap-4">
+                       <span className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-black">02</span>
+                       <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">Guardian & Contact Dossier</h4>
+                       <div className="flex-1 h-px bg-slate-100" />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <InputField label="Primary Guardian" icon={Users} value={form.parent_name} onChange={e => setForm({...form, parent_name: e.target.value})} placeholder="Parent / Guardian Name" />
+                      <InputField label="Emergency Contact" icon={Phone} value={form.parent_contact} onChange={e => setForm({...form, parent_contact: e.target.value})} placeholder="+1 (555) 000-0000" />
+                      <div className="md:col-span-2">
+                         <InputField label="Residential/Permanent Address" icon={MapPin} value={form.permanent_address} onChange={e => setForm({...form, permanent_address: e.target.value})} placeholder="Full physical address for official correspondence..." />
                       </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Section: Goals & Requirements */}
-                <div className="space-y-6">
-                   <h4 className="text-xs font-black text-indigo-500 uppercase tracking-[0.2em] flex items-center gap-2">
-                    <span className="w-8 h-px bg-indigo-500/20" /> Personalized Needs
-                  </h4>
-                  <div className="grid grid-cols-1 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Learning Goals</label>
-                      <textarea 
-                         value={form.learning_goals} onChange={e => setForm({...form, learning_goals: e.target.value})}
-                         rows={3} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm text-slate-900 outline-none focus:border-indigo-500" 
-                         placeholder="What does the student aim to achieve?"
-                      />
+                  {/* Section 3: Academic Strategy */}
+                  <div className="space-y-10">
+                    <div className="flex items-center gap-4">
+                       <span className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-black">03</span>
+                       <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">Academic Strategy & Lead Tracking</h4>
+                       <div className="flex-1 h-px bg-slate-100" />
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Special Requirements / Medical</label>
-                      <textarea 
-                         value={form.special_requirements} onChange={e => setForm({...form, special_requirements: e.target.value})}
-                         rows={2} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm text-slate-900 outline-none focus:border-indigo-500" 
-                         placeholder="Health notes, learning disabilities, or special scheduling needs..."
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                      <SelectField 
+                        label="Learning Plan" icon={ClipboardList} value={form.plan_type} 
+                        onChange={e => setForm({...form, plan_type: e.target.value})}
+                        options={[
+                          {value: 'one-on-one', label: 'One-on-One Session'},
+                          {value: 'batch', label: 'Standard Batch'},
+                          {value: 'twin', label: 'Twin Sessions'},
+                          {value: 'revision', label: 'Revision Program'}
+                        ]}
                       />
+                      <InputField label="Frequency / Week" icon={Clock} type="number" value={form.sessions_per_week} onChange={e => setForm({...form, sessions_per_week: e.target.value})} required />
+                      <InputField label="Target Syllabus" icon={BookOpen} value={form.syllabus} onChange={e => setForm({...form, syllabus: e.target.value})} placeholder="IB, IGCSE, NCERT..." />
+                      
+                      <SelectField
+                        label="Assign Mentor" icon={UserPlus} value={form.assigned_teacher}
+                        onChange={e => setForm({...form, assigned_teacher: e.target.value})}
+                        options={[
+                          {value: '', label: 'No Mentor Assigned'},
+                          ...teachers.map(t => ({ value: t.id, label: `${t.user.first_name} ${t.user.last_name}` }))
+                        ]}
+                      />
+
+                      <SelectField 
+                        label="Operating Batch" icon={Clock} value={form.batch} 
+                        onChange={e => setForm({...form, batch: e.target.value})}
+                        options={[
+                          {value: 'Morning Batch', label: 'Morning Registry'},
+                          {value: 'Evening Batch', label: 'Evening Registry'}
+                        ]}
+                      />
+
+                      <div className="flex flex-col gap-3">
+                          <SelectField
+                            label="Acquisition Source" icon={Target} 
+                            value={["Walk-in", "Parent Reference", "Student Reference", "Social Media", "Advertisement", "Website", "Existing Student Referral", "Teacher Referral"].includes(form.lead_source) ? form.lead_source : "Other"}
+                            onChange={e => setForm({...form, lead_source: e.target.value === 'Other' ? '' : e.target.value})}
+                            options={[
+                              {value: 'Walk-in', label: 'Direct Walk-in'},
+                              {value: 'Parent Reference', label: 'Parent Referral'},
+                              {value: 'Student Reference', label: 'Student Referral'},
+                              {value: 'Social Media', label: 'Social Media Platform'},
+                              {value: 'Advertisement', label: 'Marketing Campaign'},
+                              {value: 'Website', label: 'Digital Portal'},
+                              {value: 'Existing Student Referral', label: 'Student Network'},
+                              {value: 'Teacher Referral', label: 'Staff Referral'},
+                              {value: 'Other', label: 'Custom Source...'}
+                            ]}
+                          />
+                          { !["Walk-in", "Parent Reference", "Student Reference", "Social Media", "Advertisement", "Website", "Existing Student Referral", "Teacher Referral"].includes(form.lead_source) && (
+                            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+                              <input 
+                                type="text"
+                                value={form.lead_source}
+                                onChange={e => setForm({...form, lead_source: e.target.value})}
+                                placeholder="Specify custom source..."
+                                className="w-full bg-emerald-50/50 border border-emerald-100 rounded-2xl px-5 py-4 text-sm font-bold text-emerald-900 outline-none focus:border-emerald-500 transition-all"
+                              />
+                            </motion.div>
+                          )}
+                          { ["Parent Reference", "Student Reference", "Existing Student Referral", "Teacher Referral"].includes(form.lead_source) && (
+                            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+                              <input 
+                                type="text"
+                                value={form.reference_by}
+                                onChange={e => setForm({...form, reference_by: e.target.value})}
+                                placeholder="Referring Authority / Name..."
+                                className="w-full bg-emerald-50/50 border border-emerald-100 rounded-2xl px-5 py-4 text-sm font-bold text-emerald-900 outline-none focus:border-emerald-500 transition-all shadow-sm"
+                              />
+                            </motion.div>
+                          )}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Section: Lifecycle Status */}
-                <div className="space-y-6">
-                  <h4 className="text-xs font-black text-indigo-500 uppercase tracking-[0.2em] flex items-center gap-2">
-                    <span className="w-8 h-px bg-indigo-500/20" /> Status Configuration
-                  </h4>
-                  <div className="grid grid-cols-2 gap-6">
-                    <SelectField 
-                      label="Operational Status" icon={Activity} value={form.status} 
-                      onChange={e => setForm({...form, status: e.target.value})}
-                      options={[{value: 'active', label: 'Active'}, {value: 'inactive', label: 'Inactive'}]}
-                    />
-                    <SelectField 
-                      label="Lifecycle State" icon={Calendar} value={form.plan_status} 
-                      onChange={e => setForm({...form, plan_status: e.target.value})}
-                      options={[
-                        {value: 'lead', label: 'Lead'},
-                        {value: 'completed', label: 'Completed'},
-                        {value: 'pending_renewal', label: 'Pending Renewal'},
-                        {value: 'discontinued', label: 'Discontinued'}
-                      ]}
-                    />
+                  {/* Section 4: Personalized Insights */}
+                  <div className="space-y-10">
+                    <div className="flex items-center gap-4">
+                       <span className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-black">04</span>
+                       <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">Personalized Insights & Goals</h4>
+                       <div className="flex-1 h-px bg-slate-100" />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-3">
+                        <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Core Learning Objectives</label>
+                        <textarea 
+                           value={form.learning_goals} onChange={e => setForm({...form, learning_goals: e.target.value})}
+                           rows={3} className="w-full bg-slate-50 border border-slate-100 rounded-[2rem] p-6 text-[15px] font-medium text-slate-800 outline-none focus:border-indigo-500 focus:bg-white focus:shadow-xl focus:shadow-indigo-500/5 transition-all" 
+                           placeholder="Primary academic targets and milestones..."
+                        />
+                      </div>
+                      <div className="space-y-3">
+                        <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Special Clinical/Medical Provisions</label>
+                        <textarea 
+                           value={form.special_requirements} onChange={e => setForm({...form, special_requirements: e.target.value})}
+                           rows={3} className="w-full bg-slate-50 border border-slate-100 rounded-[2rem] p-6 text-[15px] font-medium text-slate-800 outline-none focus:border-indigo-500 focus:bg-white focus:shadow-xl focus:shadow-indigo-500/5 transition-all" 
+                           placeholder="Allergies, learning disabilities, or critical constraints..."
+                        />
+                      </div>
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex gap-4 pt-10 border-t border-slate-100">
-                  <button type="submit" disabled={saving} className="flex-1 py-5 bg-indigo-600 text-white rounded-3xl font-black text-lg shadow-2xl shadow-indigo-100 transition-all hover:scale-[1.01] active:scale-[0.99]">
-                    {saving ? 'Processing Neural Data...' : editingId ? 'Update Identity' : 'Authorize Student'}
-                  </button>
-                  <button type="button" onClick={() => setShowModal(false)} className="px-10 py-5 bg-slate-100 text-slate-600 rounded-3xl font-black text-lg">Dismiss</button>
-                </div>
-              </form>
+                  {/* Submit Section */}
+                  <div className="pt-12 border-t border-slate-100 flex items-center gap-6">
+                    <button 
+                      type="submit" 
+                      disabled={saving} 
+                      className="flex-1 py-6 bg-slate-900 text-white rounded-[2rem] font-black text-lg shadow-2xl shadow-slate-900/20 transition-all hover:bg-emerald-600 hover:shadow-emerald-500/20 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed group flex items-center justify-center gap-3"
+                    >
+                      {saving ? (
+                        <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          {editingId ? 'Update Dossier' : 'Initialize Enrollment'}
+                          <CheckCircle size={20} className="group-hover:translate-x-1 transition-transform" />
+                        </>
+                      )}
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => setShowModal(false)}
+                      className="px-12 py-6 bg-slate-100 text-slate-500 rounded-[2rem] font-black text-lg hover:bg-slate-200 transition-all"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
             </motion.div>
           </div>
         )}

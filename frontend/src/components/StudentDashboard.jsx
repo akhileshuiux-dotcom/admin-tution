@@ -1,7 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Bell, Plus, MoreHorizontal, ChevronDown, X, Settings, LogOut, User, HelpCircle, BookOpen, CheckCheck, PlayCircle, CheckCircle, FileText, SlidersHorizontal, Clock, Award, TrendingUp } from 'lucide-react';
+import { 
+  Users, Calendar, Clock, BookOpen, 
+  MessageSquare, FileText, Layout, CheckCircle2,
+  ChevronDown, Search, Bell, X, User,
+  Settings, HelpCircle, LogOut, MoreVertical, MoreHorizontal, CheckCheck, SlidersHorizontal, Award, TrendingUp, PlayCircle, CheckCircle
+} from 'lucide-react';
 import api from '../api';
+import DashboardHeader from './common/DashboardHeader';
 
 const NOTIFICATIONS = [
   { id: 1, icon: '📝', title: 'New assignment added', body: 'Mrs. Murray added a new Social Studies task.', time: '5 min ago', unread: true },
@@ -49,41 +55,6 @@ const NotificationDropdown = ({ onClose, notifications, setNotifications }) => (
   </motion.div>
 );
 
-const ProfileDropdown = ({ user, onLogout }) => (
-  <motion.div
-    initial={{ opacity: 0, y: -8, scale: 0.97 }}
-    animate={{ opacity: 1, y: 0, scale: 1 }}
-    exit={{ opacity: 0, y: -8, scale: 0.97 }}
-    transition={{ duration: 0.15 }}
-    className="absolute right-0 top-full mt-2 w-60 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden"
-  >
-    <div className="px-4 py-4 bg-slate-50 border-b border-slate-100">
-      <p className="text-[14px] font-semibold text-slate-800">{user?.first_name} {user?.last_name}</p>
-      <p className="text-[12px] text-slate-500 mt-0.5">{user?.email || 'student@eduway.com'}</p>
-      <span className="inline-block mt-2 text-[10px] font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full uppercase">Class 9A</span>
-    </div>
-    <div className="flex flex-col py-1">
-      {[
-        { icon: User, label: 'My Profile', action: null },
-        { icon: Settings, label: 'Settings', action: null },
-        { icon: BookOpen, label: 'Academic Records', action: null },
-        { icon: HelpCircle, label: 'Help & Support', action: null },
-      ].map(({ icon: Icon, label, action }) => (
-        <button key={label} onClick={action} className="flex items-center gap-3 px-4 py-2.5 text-[13px] text-slate-700 hover:bg-slate-50 transition-all text-left w-full">
-          <Icon className="w-4 h-4 text-slate-400" />{label}
-        </button>
-      ))}
-      <div className="border-t border-slate-100 mt-1" />
-      <button
-        onClick={onLogout}
-        className="flex items-center gap-3 px-4 py-2.5 text-[13px] text-red-600 hover:bg-red-50 transition-all text-left w-full"
-      >
-        <LogOut className="w-4 h-4" /> Log out
-      </button>
-    </div>
-  </motion.div>
-);
-
 const MenuDropdown = () => (
   <motion.div
     initial={{ opacity: 0, y: -8, scale: 0.97 }}
@@ -102,116 +73,7 @@ const MenuDropdown = () => (
   </motion.div>
 );
 
-const DashboardHeader = ({ user, onLogout }) => {
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showNotifs, setShowNotifs] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
-  const [notifications, setNotifications] = useState(NOTIFICATIONS);
 
-  const unreadCount = notifications.filter(n => n.unread).length;
-
-  const headerRef = useRef(null);
-  useEffect(() => {
-    const handler = (e) => {
-      if (headerRef.current && !headerRef.current.contains(e.target)) {
-        setShowNotifs(false);
-        setShowProfile(false);
-        setShowMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  return (
-    <div ref={headerRef} className="flex justify-between items-center bg-white/60 backdrop-blur-sm px-4 py-3 rounded-2xl border border-white/60 shadow-sm relative">
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => { setSearchOpen(v => !v); setSearchQuery(''); }}
-          className="bg-slate-800 p-2.5 rounded-xl hover:bg-slate-700 transition-all"
-        >
-          {searchOpen ? <X className="w-4 h-4 text-white" /> : <Search className="w-4 h-4 text-white" />}
-        </button>
-        <AnimatePresence>
-          {searchOpen && (
-            <motion.input
-              initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 260, opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              autoFocus
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search tasks, notes, subjects..."
-              className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-[13px] text-slate-800 placeholder:text-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 overflow-hidden"
-            />
-          )}
-        </AnimatePresence>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <div className="relative">
-          <button
-            onClick={() => { setShowNotifs(v => !v); setShowProfile(false); setShowMenu(false); }}
-            className={`p-2.5 rounded-xl transition-all ${showNotifs ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'}`}
-          >
-            <Bell className="w-4 h-4" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-pink-500 text-white text-[9px] font-semibold rounded-full flex items-center justify-center">
-                {unreadCount}
-              </span>
-            )}
-          </button>
-          <AnimatePresence>
-            {showNotifs && (
-              <NotificationDropdown
-                notifications={notifications}
-                setNotifications={setNotifications}
-                onClose={() => setShowNotifs(false)}
-              />
-            )}
-          </AnimatePresence>
-        </div>
-
-        <div className="relative">
-          <button
-            onClick={() => { setShowProfile(v => !v); setShowNotifs(false); setShowMenu(false); }}
-            className={`flex items-center gap-3 px-3 py-2 rounded-xl border transition-all ${showProfile ? 'bg-slate-100 border-blue-300' : 'bg-white border-slate-200 hover:border-blue-300'}`}
-          >
-            <img
-              src={`https://ui-avatars.com/api/?name=${user?.first_name}+${user?.last_name}&background=1e293b&color=fff&size=32`}
-              alt="Profile"
-              className="w-8 h-8 rounded-lg"
-            />
-            <div className="flex flex-col text-left">
-              <span className="text-[13px] font-semibold text-slate-800 leading-none">{user?.first_name} {user?.last_name}</span>
-              <span className="text-[11px] text-slate-500 leading-none mt-0.5">Class 9A</span>
-            </div>
-            <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showProfile ? 'rotate-180' : ''}`} />
-          </button>
-          <AnimatePresence>
-            {showProfile && <ProfileDropdown user={user} onLogout={onLogout} />}
-          </AnimatePresence>
-        </div>
-
-        <div className="relative">
-          <button
-            onClick={() => { setShowMenu(v => !v); setShowNotifs(false); setShowProfile(false); }}
-            className={`p-2.5 rounded-xl transition-all ${showMenu ? 'bg-slate-100 text-slate-800' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'}`}
-          >
-            <MoreHorizontal className="w-4 h-4" />
-          </button>
-          <AnimatePresence>
-            {showMenu && <MenuDropdown />}
-          </AnimatePresence>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const TaskDetailModal = ({ task, col, onClose, onProgressUpdate }) => {
   const [localProgress, setLocalProgress] = useState(task.progress ?? 0);
@@ -360,12 +222,15 @@ const ScheduleRow = ({ time, lesson, teacher, location, avatar }) => (
   </div>
 );
 
-const StudentDashboard = ({ user, onLogout }) => {
+const StudentDashboard = ({ user, onLogout, onNavigate }) => {
   const [tasks, setTasks] = useState([]);
   const [notes, setNotes] = useState([]);
   const [performance, setPerformance] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [activeNoteTab, setActiveNoteTab] = useState('All task');
+  const [holidays, setHolidays] = useState([]);
+
 
   useEffect(() => {
     fetchDashboardData();
@@ -374,13 +239,15 @@ const StudentDashboard = ({ user, onLogout }) => {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const [tResp, nResp, pResp] = await Promise.all([
+      const [tResp, nResp, pResp, hResp] = await Promise.all([
         api.get('/exams/'),
         api.get('/resources/'),
         api.get('/exam-results/?status=published'),
+        api.get('/holidays/'),
       ]);
       
       setPerformance(pResp.data);
+      setHolidays(hResp.data);
       
       // Transform resources to notes
       const backendNotes = nResp.data.map(res => {
@@ -428,7 +295,7 @@ const StudentDashboard = ({ user, onLogout }) => {
 
   return (
     <div className="flex flex-col gap-6 w-full">
-      <DashboardHeader user={user} onLogout={onLogout} />
+      <DashboardHeader user={user} onLogout={onLogout} onNavigate={onNavigate} />
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
         <div className="xl:col-span-5 flex flex-col gap-5">
           <div className="flex justify-between items-center">
@@ -436,24 +303,35 @@ const StudentDashboard = ({ user, onLogout }) => {
           </div>
           <div className="flex gap-1.5 p-1 bg-slate-100 rounded-xl w-full">
             {['All task', 'To do', 'In progress', 'Done'].map(tag => (
-              <span key={tag} className={`flex-1 text-center px-2 py-1.5 rounded-lg text-[11px] font-medium cursor-pointer transition-all ${
-                tag === 'All task'
-                  ? 'bg-white text-slate-800 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}>
+              <span 
+                key={tag} 
+                onClick={() => setActiveNoteTab(tag)}
+                className={`flex-1 text-center px-2 py-1.5 rounded-lg text-[11px] font-medium cursor-pointer transition-all ${
+                  activeNoteTab === tag
+                    ? 'bg-white text-slate-800 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
                 {tag}
               </span>
             ))}
           </div>
+
           <div className="flex flex-col gap-3">
-            {tasks.map(task => (
-              <TaskItem 
-                key={task.id} 
-                {...task} 
-                onClick={() => setSelectedTask(task)}
-              />
-            ))}
+            {tasks
+              .filter(task => activeNoteTab === 'All task' || task.status.toLowerCase() === activeNoteTab.toLowerCase())
+              .map(task => (
+                <TaskItem 
+                  key={task.id} 
+                  {...task} 
+                  onClick={() => setSelectedTask(task)}
+                />
+              ))}
+            {tasks.filter(task => activeNoteTab === 'All task' || task.status.toLowerCase() === activeNoteTab.toLowerCase()).length === 0 && (
+              <p className="text-center py-8 text-slate-400 text-xs font-medium bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">No tasks in this category</p>
+            )}
           </div>
+
           <button className="py-3 rounded-xl bg-white border border-slate-200 text-[12px] font-medium text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-all shadow-sm">
             View kanban board →
           </button>
@@ -539,6 +417,32 @@ const StudentDashboard = ({ user, onLogout }) => {
               <ScheduleRow time="10:30 AM" lesson="ELA" teacher="Ms. Melton" location="B2, Room 158" />
               <ScheduleRow time="12:00 PM" lesson="Biology" teacher="Mr. Hodge" location="B3, Room 310" />
               <ScheduleRow time="2:00 PM" lesson="Social" teacher="Mrs. Murray" location="B1, Room 112" />
+            </div>
+          </div>
+          
+          <div className="flex flex-col gap-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-[20px] font-semibold text-slate-800">Public Holidays</h3>
+            </div>
+            <div className="flex gap-4 overflow-x-auto pb-2">
+              {holidays.length > 0 ? holidays.map(hol => (
+                <div key={hol.id} className="p-4 rounded-2xl bg-teal-50 border border-teal-100 min-w-[200px] shadow-sm flex flex-col gap-2 flex-shrink-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-teal-500 text-white flex flex-col items-center justify-center flex-shrink-0 shadow-sm">
+                      <span className="text-[10px] font-bold leading-tight">{new Date(hol.date).toLocaleString('default', { month: 'short' }).toUpperCase()}</span>
+                      <span className="text-sm font-black leading-tight">{new Date(hol.date).getDate()}</span>
+                    </div>
+                    <div>
+                      <h4 className="text-[14px] font-bold text-teal-900">{hol.name}</h4>
+                    </div>
+                  </div>
+                  {hol.description && <p className="text-[12px] text-teal-700 mt-1">{hol.description}</p>}
+                </div>
+              )) : (
+                <div className="w-full p-6 bg-slate-50 border border-dashed border-slate-200 rounded-[1.5rem] text-center">
+                  <p className="text-slate-400 text-sm font-medium">No upcoming holidays.</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

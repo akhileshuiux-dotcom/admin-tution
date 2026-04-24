@@ -5,12 +5,15 @@ from .views import (
     StudentViewSet, TeacherViewSet, SubjectViewSet, CourseViewSet, 
     LessonViewSet, ResourceViewSet, ExamViewSet, 
     QuestionViewSet, ExamResultViewSet, 
-    AttendanceViewSet, AdminMeetingViewSet, TeacherAttendanceViewSet,
+    AttendanceViewSet, AdminMeetingViewSet, TeacherAttendanceViewSet, HolidayViewSet,
+    SchoolSettingsViewSet, RegularizationRequestViewSet,
     StudentPaymentViewSet, TeacherSalaryViewSet, ExpenseViewSet, IncomeViewSet,
     FeeTierViewSet, StudentDiscountViewSet, InvoiceViewSet,
     CreditAdvanceViewSet, FinancialTransactionViewSet, FeeInstallmentViewSet, FinanceDashboardView,
     NoteAssignmentViewSet, OnlineClassViewSet, TeacherMeetingViewSet, PreviousYearPaperViewSet,
-    PaperAttemptViewSet
+    PaperAttemptViewSet, PostViewSet, TeacherPermissionViewSet,
+    NotificationViewSet, PasswordResetRequestViewSet, forgot_password_request,
+    LeaveTypeViewSet, LeaveRequestViewSet, TeacherLeaveAllocationViewSet
 )
 
 router = DefaultRouter()
@@ -41,6 +44,17 @@ router.register(r'online-classes', OnlineClassViewSet)
 router.register(r'teacher-meetings', TeacherMeetingViewSet)
 router.register(r'previous-papers', PreviousYearPaperViewSet)
 router.register(r'paper-attempts', PaperAttemptViewSet)
+router.register(r'holidays', HolidayViewSet)
+router.register(r'school-settings', SchoolSettingsViewSet)
+router.register(r'regularization-requests', RegularizationRequestViewSet)
+
+router.register(r'teacher-permissions', TeacherPermissionViewSet, basename='teacher-permission')
+router.register(r'posts', PostViewSet)
+router.register(r'notifications', NotificationViewSet)
+router.register(r'password-reset-requests', PasswordResetRequestViewSet)
+router.register(r'leave-types', LeaveTypeViewSet)
+router.register(r'leave-requests', LeaveRequestViewSet)
+router.register(r'leave-allocations', TeacherLeaveAllocationViewSet)
 
 urlpatterns = [
     path('csrf/', get_csrf_token_view, name='get_csrf'),
@@ -48,5 +62,6 @@ urlpatterns = [
     path('logout/', logout_view, name='logout'),
     path('profile/', ProfileView.as_view(), name='profile'),
     path('finance-dashboard/', FinanceDashboardView.as_view(), name='finance_dashboard'),
+    path('forgot-password/', forgot_password_request, name='forgot_password'),
     path('', include(router.urls)),
 ]

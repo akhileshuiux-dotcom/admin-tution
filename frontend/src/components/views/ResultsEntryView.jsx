@@ -164,33 +164,44 @@ const AdminResultsView = ({ user }) => {
       </div>
 
       {/* Filter Bar */}
-      <div className="flex justify-between items-center bg-white rounded-3xl border border-slate-100 shadow-sm p-2 overflow-x-auto no-scrollbar gap-4">
-        <div className="flex gap-2 min-w-max">
-          {['All', ...new Set(students.map(s => s.grade))].sort().map(grade => (
-            <button
-              key={grade}
-              onClick={() => setSelectedGrade(grade)}
-              className={`px-6 py-2 rounded-2xl text-xs font-black transition-all ${
-                selectedGrade === grade 
-                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' 
-                  : 'text-slate-500 hover:bg-slate-50'
-              }`}
+      <div className="flex flex-wrap items-center bg-white rounded-[2rem] border border-slate-100 shadow-sm p-3 px-6 gap-6 transition-all">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-sm">
+            <Filter size={18} />
+          </div>
+          <div>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Filter by Class</p>
+            <select 
+              value={selectedGrade} 
+              onChange={e => setSelectedGrade(e.target.value)}
+              className="bg-transparent border-none outline-none text-sm font-black text-slate-900 cursor-pointer min-w-[120px]"
             >
-              {grade === 'All' ? 'View All' : `Standard: ${grade}`}
-            </button>
-          ))}
+              <option value="All">All Standards</option>
+              {[...new Set(students.map(s => s.grade))].sort().map(grade => (
+                <option key={grade} value={grade}>Standard {grade}</option>
+              ))}
+            </select>
+          </div>
         </div>
-        <div className="flex items-center gap-3 pr-2 min-w-max border-l border-slate-100 pl-4">
-           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Academic Year / Session:</label>
-           <select 
-             value={selectedYear} 
-             onChange={e => setSelectedYear(e.target.value)}
-             className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs font-black text-slate-700 outline-none hover:border-indigo-200 transition-all cursor-pointer"
-           >
-             {availableYears.map(year => (
-               <option key={year} value={year}>{year === 'All' ? 'All Years' : year}</option>
-             ))}
-           </select>
+
+        <div className="h-10 w-px bg-slate-100 hidden md:block" />
+
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-slate-50 text-slate-500 flex items-center justify-center">
+            <Clock size={18} />
+          </div>
+          <div>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Academic Year</p>
+            <select 
+              value={selectedYear} 
+              onChange={e => setSelectedYear(e.target.value)}
+              className="bg-transparent border-none outline-none text-sm font-black text-slate-900 cursor-pointer min-w-[120px]"
+            >
+              {availableYears.map(year => (
+                <option key={year} value={year}>{year === 'All' ? 'All Sessions' : year}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 

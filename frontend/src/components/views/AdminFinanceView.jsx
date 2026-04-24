@@ -640,7 +640,7 @@ const AdminFinanceView = () => {
                       <td style={{ padding: 12, fontSize: 14, fontWeight: 900, color: '#000' }}>${inv.net_amount}</td>
                       <td style={{ padding: 12, fontSize: 13, color: '#ef4444' }}>{inv.due_date}</td>
                       <td style={{ padding: 12 }}>
-                        <span style={{ padding: '4px 12px', borderRadius: 20, fontSize: 10, fontWeight: 800, color: '#000', background: inv.status === 'paid' ? '#f0fdf4' : '#fff7ed', color: inv.status === 'paid' ? '#10b981' : '#f59e0b' }}>{inv.status.toUpperCase()}</span>
+                        <span style={{ padding: '4px 12px', borderRadius: 20, fontSize: 10, fontWeight: 800, background: inv.status === 'paid' ? '#f0fdf4' : '#fff7ed', color: inv.status === 'paid' ? '#10b981' : '#f59e0b' }}>{inv.status.toUpperCase()}</span>
                       </td>
                     </tr>
                   ))}

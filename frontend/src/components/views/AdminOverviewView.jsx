@@ -59,7 +59,7 @@ const MiniChart = ({ data, color }) => {
   );
 };
 
-const AdminOverviewView = ({ user }) => {
+const AdminOverviewView = ({ user, setActiveTab }) => {
   const [data, setData] = useState({ students: [], teachers: [], courses: [], meetings: [] });
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -236,16 +236,16 @@ const AdminOverviewView = ({ user }) => {
             <h3 style={{ fontSize: 18, fontWeight: 800, color: '#fff', marginBottom: 6 }}>Admin Toolbox</h3>
             <p style={{ color: '#94a3b8', fontSize: 13, marginBottom: 24 }}>System administration core commands.</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <motion.button whileHover={{ scale: 1.02 }} style={{ padding: '14px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <motion.button onClick={() => setActiveTab && setActiveTab('Students')} whileHover={{ scale: 1.02 }} style={{ padding: '14px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                 <UserPlus size={16} /> Register Student
               </motion.button>
-              <motion.button whileHover={{ scale: 1.02 }} style={{ padding: '14px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <motion.button onClick={() => setActiveTab && setActiveTab('Teachers')} whileHover={{ scale: 1.02 }} style={{ padding: '14px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                 <GraduationCap size={16} /> Add Teacher
               </motion.button>
-              <motion.button whileHover={{ scale: 1.02 }} style={{ padding: '14px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <motion.button onClick={() => setActiveTab && setActiveTab('Courses')} whileHover={{ scale: 1.02 }} style={{ padding: '14px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                 <BookOpen size={16} /> Create Course
               </motion.button>
-              <motion.button whileHover={{ scale: 1.02 }} style={{ padding: '14px', background: '#3b82f6', border: 'none', borderRadius: 16, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 4px 12px rgba(59,130,246,0.3)' }}>
+              <motion.button onClick={() => setActiveTab && setActiveTab('Notices')} whileHover={{ scale: 1.02 }} style={{ padding: '14px', background: '#3b82f6', border: 'none', borderRadius: 16, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 4px 12px rgba(59,130,246,0.3)' }}>
                 <Send size={16} /> Publish Notice
               </motion.button>
             </div>

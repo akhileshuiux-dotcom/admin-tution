@@ -30,7 +30,7 @@ const SummaryCards = ({ data }) => (
   </div>
 );
 
-const TeacherAttendanceView = ({ user }) => {
+const TeacherAttendanceView = ({ user, permissions }) => {
   const [activeTab, setActiveTab] = useState('mark'); // 'mark' or 'history'
   const [students, setStudents] = useState([]);
   const [attendance, setAttendance] = useState({});
@@ -38,6 +38,15 @@ const TeacherAttendanceView = ({ user }) => {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const hasPerm = (cat, key) => permissions?.[cat]?.[key] === true;
+
+  // If mark_attendance is disabled, default to history tab
+  useEffect(() => {
+    if (!hasPerm('attendance', 'mark_attendance')) {
+        setActiveTab('history');
+    }
+  }, [permissions]);
 
   // History State
   const [history, setHistory] = useState([]);

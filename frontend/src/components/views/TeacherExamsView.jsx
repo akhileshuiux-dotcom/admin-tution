@@ -12,7 +12,7 @@ const inp = {
   borderRadius: 10, padding: '9px 14px', fontSize: 13, outline: 'none', boxSizing: 'border-box',
 };
 
-const TeacherExamsView = ({ user }) => {
+const TeacherExamsView = ({ user, permissions }) => {
   const [tab, setTab] = useState('schedule');
   const [exams, setExams] = useState([]);
   const [results, setResults] = useState([]);
@@ -20,7 +20,16 @@ const TeacherExamsView = ({ user }) => {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Schedule States
+  const hasPerm = (cat, key) => permissions?.[cat]?.[key] === true;
+
+  // Initialize tab based on permissions
+  useEffect(() => {
+    if (!hasPerm('exam', 'create_exam') && tab === 'schedule') {
+        if (hasPerm('exam', 'evaluate_exams') || hasPerm('exam', 'view_results')) {
+            setTab('grading');
+        }
+    }
+  }, [permissions]);
   const [showForm, setShowForm] = useState(false);
   const [examForm, setExamForm] = useState({ 
     title: '', course: '', scheduled_date: '', location: '', 
@@ -248,7 +257,7 @@ const TeacherExamsView = ({ user }) => {
               )}
 
               {/* Individual Publish Toggle */}
-              {existing && isEvaluated && (
+              {existing && isEvaluated && hasPerm('exam', 'publish_results') && (
                 <button
                   onClick={() => togglePublish(existing)}
                   title={isPublished ? 'Unpublish Result' : 'Publish Result'}
@@ -263,11 +272,13 @@ const TeacherExamsView = ({ user }) => {
                 </button>
               )}
               
-              <button 
-                 onClick={() => openEvaluation(s, existing, exams.find(e => e.id === selectedExam))}
-                 style={{ padding:'8px 14px', borderRadius:9, border:'none', background:'#f8fafc', color:'#0ea5e9', cursor:'pointer', display:'flex', gap:6, alignItems:'center', fontWeight:600, fontSize:13, border:'1px solid #e0f2fe' }}>
-                 <Eye size={16}/> View Details
-              </button>
+              {(hasPerm('exam', 'evaluate_exams') || hasPerm('exam', 'view_results')) && (
+                <button 
+                    onClick={() => openEvaluation(s, existing, exams.find(e => e.id === selectedExam))}
+                    style={{ padding:'8px 14px', borderRadius:9, border:'none', background:'#f8fafc', color:'#0ea5e9', cursor:'pointer', display:'flex', gap:6, alignItems:'center', fontWeight:600, fontSize:13, border:'1px solid #e0f2fe' }}>
+                    <Eye size={16}/> {hasPerm('exam', 'evaluate_exams') ? 'Evaluate / View' : 'View Details'}
+                </button>
+              )}
             </div>
           </div>
         );
@@ -429,7 +440,11 @@ const TeacherExamsView = ({ user }) => {
           </div>
         </div>
         <div style={{ display: 'flex', background: '#f1f5f9', borderRadius: 12, padding: 4, gap: 2 }}>
-          {['schedule', 'grading'].map(t => (
+          {['schedule', 'grading'].filter(t => {
+            if (t === 'schedule') return hasPerm('exam', 'create_exam');
+            if (t === 'grading') return hasPerm('exam', 'evaluate_exams') || hasPerm('exam', 'view_results');
+            return true;
+          }).map(t => (
             <button key={t} onClick={() => setTab(t)}
               style={{ padding: '7px 18px', borderRadius: 9, border: 'none', background: tab===t ? '#fff' : 'transparent', color: tab===t ? '#1e293b' : '#94a3b8', fontWeight: tab===t ? 700 : 500, fontSize: 13, cursor: 'pointer', textTransform: 'capitalize', boxShadow: tab===t ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}>
               {t}
@@ -442,10 +457,12 @@ const TeacherExamsView = ({ user }) => {
       {tab === 'schedule' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button onClick={() => setShowForm(v => !v)}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', background: '#f59e0b', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-              <Plus size={15} /> Schedule Exam
-            </button>
+            {hasPerm('exam', 'create_exam') && (
+                <button onClick={() => setShowForm(v => !v)}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', background: '#f59e0b', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                <Plus size={15} /> Schedule Exam
+                </button>
+            )}
           </div>
 
           {showForm && (
@@ -627,19 +644,21 @@ const TeacherExamsView = ({ user }) => {
                          </span>
                        )}
                      </div>
-                     <button
-                       onClick={publishAll}
-                       disabled={saving || unpublishedEvaluated === 0}
-                       style={{
-                         display:'flex', alignItems:'center', gap:6,
-                         padding:'8px 16px', background: unpublishedEvaluated === 0 ? '#f1f5f9' : 'linear-gradient(135deg,#6366f1,#8b5cf6)',
-                         border:'none', borderRadius:10, color: unpublishedEvaluated === 0 ? '#94a3b8' : '#fff',
-                         fontWeight:700, fontSize:13, cursor: unpublishedEvaluated === 0 ? 'not-allowed' : 'pointer',
-                         transition:'all 0.2s',
-                       }}>
-                       <Send size={14}/>
-                       {saving ? 'Publishing…' : `Publish All${unpublishedEvaluated > 0 ? ` (${unpublishedEvaluated})` : ''}`}
-                     </button>
+                     {hasPerm('exam', 'publish_results') && (
+                        <button
+                          onClick={publishAll}
+                          disabled={saving || unpublishedEvaluated === 0}
+                          style={{
+                            display:'flex', alignItems:'center', gap:6,
+                            padding:'8px 16px', background: unpublishedEvaluated === 0 ? '#f1f5f9' : 'linear-gradient(135deg,#6366f1,#8b5cf6)',
+                            border:'none', borderRadius:10, color: unpublishedEvaluated === 0 ? '#94a3b8' : '#fff',
+                            fontWeight:700, fontSize:13, cursor: unpublishedEvaluated === 0 ? 'not-allowed' : 'pointer',
+                            transition:'all 0.2s',
+                          }}>
+                          <Send size={14}/>
+                          {saving ? 'Publishing…' : `Publish All${unpublishedEvaluated > 0 ? ` (${unpublishedEvaluated})` : ''}`}
+                        </button>
+                     )}
                    </div>
                 </div>
               );

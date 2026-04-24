@@ -1,3 +1,4 @@
+from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
@@ -13,7 +14,9 @@ from .models import (
     StudentPayment, TeacherSalary, Expense, Income, TeacherAttendance,
     FeeTier, StudentDiscount, Invoice, CreditAdvance, FinancialTransaction,
     FeeInstallment, NoteAssignment, OnlineClass, TeacherMeeting,
-    PreviousYearPaper, PaperQuestion, PaperAttempt, PaperAnswer, PaperPurchase
+    PreviousYearPaper, PaperQuestion, PaperAttempt, PaperAnswer, PaperPurchase, Post, TeacherPermission,
+    Holiday, SchoolSettings, RegularizationRequest, Notification, PasswordResetRequest,
+    LeaveType, LeaveRequest, TeacherLeaveAllocation
 )
 from .serializers import (
     StudentSerializer, TeacherSerializer, SubjectSerializer, 
@@ -21,11 +24,14 @@ from .serializers import (
     ExamSerializer, QuestionSerializer, ExamResultSerializer, 
     UserSerializer, AttendanceSerializer, AdminMeetingSerializer,
     StudentPaymentSerializer, TeacherSalarySerializer, ExpenseSerializer, 
-    IncomeSerializer, TeacherAttendanceSerializer,
+    IncomeSerializer, TeacherAttendanceSerializer, HolidaySerializer,
     FeeTierSerializer, StudentDiscountSerializer, InvoiceSerializer,
     CreditAdvanceSerializer, FinancialTransactionSerializer, UserSerializer,
     FeeInstallmentSerializer, NoteAssignmentSerializer, OnlineClassSerializer, TeacherMeetingSerializer,
-    PreviousYearPaperSerializer, PaperQuestionSerializer, PaperAttemptSerializer, PaperAnswerSerializer, PaperPurchaseSerializer
+    PreviousYearPaperSerializer, PaperQuestionSerializer, PaperAttemptSerializer, PaperAnswerSerializer, PaperPurchaseSerializer,
+    PostSerializer, TeacherPermissionSerializer, SchoolSettingsSerializer, RegularizationRequestSerializer,
+    NotificationSerializer, PasswordResetRequestSerializer,
+    LeaveTypeSerializer, LeaveRequestSerializer, TeacherLeaveAllocationSerializer
 )
 
 from rest_framework.views import APIView
@@ -37,6 +43,15 @@ def get_profile_data(user):
         serializer = TeacherSerializer(teacher)
         data = serializer.data
         data['role'] = 'teacher'
+        
+        # Include Teacher Permissions
+        from .models import TeacherPermission
+        perm_obj = TeacherPermission.objects.first()
+        if not perm_obj:
+            # Create default if missing
+            perm_obj = TeacherPermission.objects.create(permissions=TeacherPermission.get_default_permissions())
+        data['permissions'] = perm_obj.permissions
+        
         return data
         
     # 2. Check for Student
@@ -102,12 +117,36 @@ def get_csrf_token_view(request):
 @method_decorator(ensure_csrf_cookie, name='dispatch')
 class ProfileView(APIView):
     permission_classes = [IsAuthenticated]
-    
     def get(self, request):
         data = get_profile_data(request.user)
         if data.get('role') == 'guest' and not (request.user.is_staff or request.user.is_superuser):
              return Response({'error': 'Profile not found'}, status=404)
         return Response(data)
+
+    def post(self, request):
+        # Handle Change Password
+        action = request.data.get('action')
+        if action == 'change_password':
+            user = request.user
+            old_password = request.data.get('old_password')
+            new_password = request.data.get('new_password')
+            
+            if not user.check_password(old_password):
+                return Response({'error': 'Incorrect current password'}, status=400)
+            
+            user.set_password(new_password)
+            user.save()
+            
+            # If teacher, clear needs_password_change
+            if hasattr(user, 'teacher_profile'):
+                teacher = user.teacher_profile
+                teacher.needs_password_change = False
+                teacher.save()
+                
+            login(request, user) # Keep user logged in
+            return Response({'message': 'Password changed successfully'})
+            
+        return Response({'error': 'Invalid action'}, status=400)
 
 class StudentViewSet(viewsets.ModelViewSet):
     queryset = Student.objects.all()
@@ -120,6 +159,24 @@ class TeacherViewSet(viewsets.ModelViewSet):
     queryset = Teacher.objects.all()
     serializer_class = TeacherSerializer
     permission_classes = [IsAuthenticated]
+
+    @action(detail=True, methods=['POST'])
+    def reset_password(self, request, pk=None):
+        if not request.user.is_staff:
+            return Response({'error': 'Only admins can reset passwords'}, status=403)
+        
+        teacher = self.get_object()
+        new_password = request.data.get('password')
+        if not new_password:
+            return Response({'error': 'Password is required'}, status=400)
+            
+        teacher.user.set_password(new_password)
+        teacher.user.save()
+        
+        teacher.needs_password_change = True
+        teacher.save()
+        
+        return Response({'message': f'Password for {teacher.user.get_full_name()} has been reset.'})
 
 class SubjectViewSet(viewsets.ModelViewSet):
     queryset = Subject.objects.all()
@@ -434,10 +491,242 @@ class AttendanceViewSet(viewsets.ModelViewSet):
             
         return Response({'message': f'Marked {len(results)} records.', 'data': results})
 
+import math
+
+def haversine(lat1, lon1, lat2, lon2):
+    R = 6371000  # Earth radius in meters
+    phi1, phi2 = math.radians(float(lat1)), math.radians(float(lat2))
+    dphi = math.radians(float(lat2) - float(lat1))
+    dlambda = math.radians(float(lon2) - float(lon1))
+    a = math.sin(dphi / 2)**2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2)**2
+    return 2 * R * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+class SchoolSettingsViewSet(viewsets.ModelViewSet):
+    queryset = SchoolSettings.objects.all()
+    serializer_class = SchoolSettingsSerializer
+    permission_classes = [IsAuthenticated]
+
+class RegularizationRequestViewSet(viewsets.ModelViewSet):
+    queryset = RegularizationRequest.objects.all().select_related('teacher', 'teacher__user')
+    serializer_class = RegularizationRequestSerializer
+    permission_classes = [IsAuthenticated]
+    filterset_fields = ['teacher', 'status', 'attendance_date']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        user = self.request.user
+        if hasattr(user, 'teacher_profile') and not user.is_staff:
+            return qs.filter(teacher=user.teacher_profile)
+        return qs
+
+    @action(detail=True, methods=['POST'])
+    def process_request(self, request, pk=None):
+        if not request.user.is_staff:
+            return Response({'error': 'Only admins can process requests.'}, status=403)
+        
+        reg_req = self.get_object()
+        status_to_set = request.data.get('status')
+        admin_note = request.data.get('admin_note', '')
+        
+        if status_to_set not in ['approved', 'rejected']:
+            return Response({'error': 'Invalid status.'}, status=400)
+            
+        reg_req.status = status_to_set
+        reg_req.admin_note = admin_note
+        reg_req.save()
+        
+        # If approved, sync requested times and capture audit trail
+        if status_to_set == 'approved':
+            try:
+                attendance, created = TeacherAttendance.objects.get_or_create(
+                    teacher=reg_req.teacher, 
+                    date=reg_req.attendance_date,
+                    defaults={'status': 'present', 'attendance_source': 'admin'}
+                )
+                
+                # Capture audit trail
+                reg_req.original_check_in = attendance.check_in
+                reg_req.original_check_out = attendance.check_out
+                reg_req.original_status = attendance.status
+                
+                # Apply new correction data
+                if reg_req.requested_check_in:
+                    attendance.check_in = reg_req.requested_check_in
+                if reg_req.requested_check_out:
+                    attendance.check_out = reg_req.requested_check_out
+                
+                attendance.status = 'corrected'
+                attendance.is_corrected = True
+                attendance.corrected_by = request.user
+                attendance.save()
+                
+                reg_req.approved_by = request.user
+                reg_req.approved_at = timezone.now()
+                reg_req.save()
+            except Exception as e:
+                return Response({'error': f'Attendance sync failed: {str(e)}'}, status=500)
+        else:
+            reg_req.save()
+            
+        return Response({'message': f'Request {status_to_set} successfully.'})
+
+class HolidayViewSet(viewsets.ModelViewSet):
+    queryset = Holiday.objects.all()
+    serializer_class = HolidaySerializer
+    permission_classes = [IsAuthenticated]
+
 class TeacherAttendanceViewSet(viewsets.ModelViewSet):
-    queryset = TeacherAttendance.objects.all()
+    queryset = TeacherAttendance.objects.all().select_related('teacher', 'teacher__user', 'marked_by', 'corrected_by')
     serializer_class = TeacherAttendanceSerializer
     permission_classes = [IsAuthenticated]
+    filterset_fields = {
+        'teacher': ['exact'],
+        'date': ['exact', 'gte', 'lte'],
+        'status': ['exact'],
+    }
+    search_fields = ['teacher__user__first_name', 'teacher__user__last_name', 'teacher__employee_id']
+    ordering_fields = ['date']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        user = self.request.user
+        # Regular teachers only see their own attendance
+        if hasattr(user, 'teacher_profile') and not user.is_staff:
+            return qs.filter(teacher=user.teacher_profile)
+        return qs
+
+    @action(detail=False, methods=['POST'])
+    def mark_self(self, request):
+        user = request.user
+        if not hasattr(user, 'teacher_profile'):
+            return Response({'error': 'Only teachers can self-mark.'}, status=403)
+        
+        teacher = user.teacher_profile
+        date = timezone.now().date()
+        time = timezone.now().time()
+        
+        lat = request.data.get('lat')
+        lng = request.data.get('lng')
+        selfie = request.FILES.get('selfie')
+        action_type = request.data.get('type') # 'check_in' or 'check_out'
+        
+        if not lat or not lng or not selfie:
+            return Response({'error': 'Location and selfie are mandatory.'}, status=400)
+            
+        # Verify geofence
+        school = SchoolSettings.objects.first()
+        if not school:
+            # Fallback placeholder if no settings exist yet
+            school_lat, school_lng, radius = 28.6139, 77.2090, 50
+        else:
+            school_lat, school_lng, radius = school.latitude, school.longitude, school.radius_meters
+            
+        dist = haversine(lat, lng, school_lat, school_lng)
+        is_verified = dist <= radius
+        
+        if not is_verified:
+            return Response({
+                'error': 'Outside school radius.', 
+                'distance': round(dist, 2),
+                'allowed': radius
+            }, status=400)
+            
+        attendance, created = TeacherAttendance.objects.get_or_create(
+            teacher=teacher,
+            date=date,
+            defaults={'status': 'checked_in', 'attendance_source': 'self'}
+        )
+        
+        attendance.distance_meters = int(dist)
+        
+        if action_type == 'check_in':
+            if attendance.check_in:
+                return Response({'error': 'Already checked in for today.'}, status=400)
+            attendance.check_in = time
+            attendance.check_in_selfie = selfie
+            attendance.check_in_lat = lat
+            attendance.check_in_lng = lng
+            attendance.check_in_verified = True
+            attendance.status = 'checked_in'
+        else:
+            if not attendance.check_in:
+                return Response({'error': 'Please check-in first.'}, status=400)
+            if attendance.check_out:
+                return Response({'error': 'Already checked out for today.'}, status=400)
+            attendance.check_out = time
+            attendance.check_out_selfie = selfie
+            attendance.check_out_lat = lat
+            attendance.check_out_lng = lng
+            attendance.check_out_verified = True
+            attendance.status = 'checked_out'
+            
+        attendance.save()
+        return Response(TeacherAttendanceSerializer(attendance).data)
+
+    @action(detail=False, methods=['POST'])
+    def bulk_mark(self, request):
+        if not request.user.is_staff:
+            return Response({'error': 'Only admins can mark teacher attendance.'}, status=403)
+        
+        data = request.data
+        date = data.get('date')
+        records = data.get('records', [])
+        
+        if not date:
+            return Response({'error': 'Date is required.'}, status=400)
+            
+        results = []
+        for rec in records:
+            teacher_id = rec.get('teacher_id')
+            status = rec.get('status', 'present')
+            check_in = rec.get('check_in')
+            check_out = rec.get('check_out')
+            notes = rec.get('notes', '')
+            leave_reason = rec.get('leave_reason', '')
+            
+            # Using update_or_create to handle re-marking
+            obj, created = TeacherAttendance.objects.update_or_create(
+                teacher_id=teacher_id,
+                date=date,
+                defaults={
+                    'status': status,
+                    'check_in': check_in if check_in else None,
+                    'check_out': check_out if check_out else None,
+                    'notes': notes,
+                    'leave_reason': leave_reason,
+                    'marked_by': request.user,
+                    'attendance_source': 'admin'
+                }
+            )
+            results.append(TeacherAttendanceSerializer(obj).data)
+            
+        return Response({'message': f'Marked {len(results)} records.', 'data': results})
+
+    @action(detail=False, methods=['GET'])
+    def stats_summary(self, request):
+        date_str = request.query_params.get('date')
+        if not date_str:
+            from datetime import date as d
+            date_str = d.today().isoformat()
+        
+        qs = self.get_queryset().filter(date=date_str)
+        
+        total_teachers = Teacher.objects.filter(status='active').count()
+        present = qs.filter(status='present').count()
+        absent = qs.filter(status='absent').count()
+        late = qs.filter(status='late').count()
+        leave = qs.filter(status='leave').count()
+        half_day = qs.filter(status='half_day').count()
+        
+        return Response({
+            'total': total_teachers,
+            'present': present,
+            'absent': absent,
+            'late': late,
+            'leave': leave,
+            'half_day': half_day,
+            'not_marked': total_teachers - qs.count()
+        })
 
 class StudentPaymentViewSet(viewsets.ModelViewSet):
     queryset = StudentPayment.objects.all()
@@ -514,6 +803,86 @@ class TeacherSalaryViewSet(viewsets.ModelViewSet):
             created_count += 1
             
         return Response({'message': f'Generated {created_count} salary records for {month}.'})
+
+class PasswordResetRequestViewSet(viewsets.ModelViewSet):
+    queryset = PasswordResetRequest.objects.all().select_related('teacher', 'teacher__user')
+    serializer_class = PasswordResetRequestSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if not self.request.user.is_staff:
+            return qs.filter(teacher__user=self.request.user)
+        return qs
+
+    @action(detail=True, methods=['POST'])
+    def process(self, request, pk=None):
+        if not request.user.is_staff:
+            return Response({'error': 'Only admins can process requests'}, status=403)
+        
+        reset_req = self.get_object()
+        action = request.data.get('action') # 'approve' or 'reject'
+        admin_note = request.data.get('admin_note', '')
+        temp_password = request.data.get('temp_password')
+
+        if action == 'approve':
+            if not temp_password:
+                return Response({'error': 'Temporary password is required for approval'}, status=400)
+            
+            reset_req.status = 'approved'
+            reset_req.admin_note = admin_note
+            reset_req.resolved_at = timezone.now()
+            reset_req.save()
+
+            # Set the temporary password
+            teacher = reset_req.teacher
+            teacher.user.set_password(temp_password)
+            teacher.user.save()
+            teacher.needs_password_change = True
+            teacher.save()
+
+            return Response({'message': 'Request approved and temporary password set.'})
+        
+        elif action == 'reject':
+            reset_req.status = 'rejected'
+            reset_req.admin_note = admin_note
+            reset_req.resolved_at = timezone.now()
+            reset_req.save()
+            return Response({'message': 'Request rejected.'})
+            
+        return Response({'error': 'Invalid action'}, status=400)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def forgot_password_request(request):
+    identifier = request.data.get('identifier') # email, employee_id, or username
+    if not identifier:
+        return Response({'error': 'Identifier is required'}, status=400)
+    
+    teacher = None
+    try:
+        # Search by email
+        teacher = Teacher.objects.get(user__email__iexact=identifier)
+    except Teacher.DoesNotExist:
+        try:
+            # Search by employee_id
+            teacher = Teacher.objects.get(employee_id__iexact=identifier)
+        except Teacher.DoesNotExist:
+            try:
+                # Search by username
+                teacher = Teacher.objects.get(user__username__iexact=identifier)
+            except Teacher.DoesNotExist:
+                pass
+    
+    if not teacher:
+        return Response({'error': 'Teacher account not found'}, status=404)
+    
+    # Check if a pending request already exists
+    if PasswordResetRequest.objects.filter(teacher=teacher, status='pending').exists():
+        return Response({'message': 'A reset request is already pending for this account.'})
+    
+    PasswordResetRequest.objects.create(teacher=teacher)
+    return Response({'message': 'Password reset request submitted successfully. Please contact admin for approval.'})
 
 class ExpenseViewSet(viewsets.ModelViewSet):
     queryset = Expense.objects.all()
@@ -784,3 +1153,395 @@ class PaperAttemptViewSet(viewsets.ModelViewSet):
         else:
             serializer.save()
 
+class PostViewSet(viewsets.ModelViewSet):
+    queryset = Post.objects.all()
+    serializer_class = PostSerializer
+    permission_classes = [IsAuthenticated]
+    filterset_fields = ['post_type', 'audience', 'status', 'priority']
+    search_fields = ['title', 'content']
+    parser_classes = (MultiPartParser, FormParser)
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        user = self.request.user
+        
+        # Super Admin sees everything
+        if user.is_staff or user.is_superuser:
+            return qs
+            
+        # Teacher see published posts meant for them or both
+        if hasattr(user, 'teacher_profile'):
+            return qs.filter(
+                status='published',
+                audience__in=['teachers', 'both']
+            ).filter(
+                Q(expiry_date__gt=timezone.now()) | Q(expiry_date__isnull=True)
+            )
+            
+        # Student see published posts meant for them or both
+        if hasattr(user, 'student_profile'):
+            return qs.filter(
+                status='published',
+                audience__in=['students', 'both']
+            ).filter(
+                Q(expiry_date__gt=timezone.now()) | Q(expiry_date__isnull=True)
+            )
+            
+        return qs.none()
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+
+
+class TeacherPermissionViewSet(viewsets.ModelViewSet):
+    queryset = TeacherPermission.objects.all()
+    serializer_class = TeacherPermissionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return TeacherPermission.objects.all()
+
+    @action(detail=False, methods=['GET'])
+    def current(self, request):
+        perm_obj = TeacherPermission.objects.first()
+        if not perm_obj:
+            perm_obj = TeacherPermission.objects.create(permissions=TeacherPermission.get_default_permissions())
+        serializer = self.get_serializer(perm_obj)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['POST'])
+    def update_permissions(self, request):
+        if not request.user.is_superuser:
+            return Response({"error": "Only Super Admins can update permissions"}, status=403)
+        
+        perm_obj = TeacherPermission.objects.first()
+        if not perm_obj:
+            perm_obj = TeacherPermission.objects.create(permissions=TeacherPermission.get_default_permissions())
+        
+        perm_obj.permissions = request.data.get('permissions', perm_obj.permissions)
+        perm_obj.save()
+        return Response({"message": "Permissions updated successfully", "permissions": perm_obj.permissions})
+
+class NotificationViewSet(viewsets.ModelViewSet):
+    queryset = Notification.objects.all()
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return self.queryset.filter(recipient=self.request.user)
+
+    @action(detail=False, methods=['POST'])
+    def mark_as_read(self, request):
+        notification_ids = request.data.get('ids', [])
+        if notification_ids:
+            Notification.objects.filter(recipient=request.user, id__in=notification_ids).update(is_read=True)
+            return Response({'status': 'success'})
+        return Response({'status': 'error', 'message': 'No IDs provided'}, status=400)
+
+    @action(detail=False, methods=['POST'])
+    def mark_all_read(self, request):
+        Notification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
+        return Response({'status': 'success'})
+
+    @action(detail=False, methods=['POST'])
+    def clear_selected(self, request):
+        notification_ids = request.data.get('ids', [])
+        if notification_ids:
+            Notification.objects.filter(recipient=request.user, id__in=notification_ids).delete()
+            return Response({'status': 'success'})
+        return Response({'status': 'error', 'message': 'No IDs provided'}, status=400)
+
+    @action(detail=False, methods=['POST'])
+    def clear_all(self, request):
+        Notification.objects.filter(recipient=request.user).delete()
+        return Response({'status': 'success'})
+
+class LeaveTypeViewSet(viewsets.ModelViewSet):
+    queryset = LeaveType.objects.all()
+    serializer_class = LeaveTypeSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            if not self.request.user.is_staff:
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied("Only admins can modify leave types.")
+        return super().get_permissions()
+
+class LeaveRequestViewSet(viewsets.ModelViewSet):
+    queryset = LeaveRequest.objects.all().select_related('teacher__user', 'leave_type')
+    serializer_class = LeaveRequestSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        user = self.request.user
+        if hasattr(user, 'teacher_profile') and not user.is_staff:
+            return qs.filter(teacher=user.teacher_profile)
+        return qs
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        
+        # Validation: Check allocation limits
+        leave_type = serializer.validated_data.get('leave_type')
+        days = serializer.validated_data.get('days')
+        if not days:
+            from_date = serializer.validated_data.get('from_date')
+            to_date = serializer.validated_data.get('to_date')
+            days = float((to_date - from_date).days + 1) if from_date and to_date else 1.0
+
+        if hasattr(user, 'teacher_profile') and not user.is_staff:
+            teacher_profile = user.teacher_profile
+        else:
+            teacher_profile = serializer.validated_data.get('teacher')
+            if not teacher_profile:
+                from rest_framework.exceptions import ValidationError
+                raise ValidationError({"error": "Teacher is required when assigning leave manually."})
+
+        # Calculate used and pending leaves for this type
+        from django.db.models import Sum
+        existing_leaves = LeaveRequest.objects.filter(
+            teacher=teacher_profile,
+            leave_type=leave_type,
+            status__in=['approved', 'pending']
+        ).aggregate(total=Sum('days'))['total'] or 0
+
+        allocation = TeacherLeaveAllocation.objects.filter(
+            teacher=teacher_profile,
+            leave_type=leave_type
+        ).first()
+        
+        allocated_days = allocation.allocated_days if allocation else 0
+
+        if existing_leaves + days > allocated_days:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({"error": "Insufficient balance for the selected leave type."})
+
+        if hasattr(user, 'teacher_profile') and not user.is_staff:
+            leave = serializer.save(teacher=user.teacher_profile, status='pending')
+            # Notify admins
+            admin_users = User.objects.filter(is_staff=True)
+            for admin in admin_users:
+                Notification.objects.create(
+                    recipient=admin,
+                    title="New Leave Request",
+                    message=f"Teacher {user.get_full_name()} has requested leave from {leave.from_date} to {leave.to_date}.",
+                    notification_type="system"
+                )
+        else:
+            leave = serializer.save(status='approved')
+            self._sync_attendance(leave)
+
+    def _sync_attendance(self, leave):
+        from datetime import timedelta
+        current_date = leave.from_date
+        while current_date <= leave.to_date:
+            # Skip weekends (5=Saturday, 6=Sunday)
+            if current_date.weekday() < 5:
+                # Check if it's not a holiday
+                if not Holiday.objects.filter(date=current_date).exists():
+                    TeacherAttendance.objects.update_or_create(
+                        teacher=leave.teacher,
+                        date=current_date,
+                        defaults={
+                            'status': 'leave',
+                            'is_corrected': True,
+                            'correction_reason': f"Approved Leave: {leave.leave_type.name if leave.leave_type else 'Manual'}"
+                        }
+                    )
+            current_date += timedelta(days=1)
+
+    @action(detail=True, methods=['POST'])
+    def approve(self, request, pk=None):
+        if not request.user.is_staff:
+            return Response({'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+        leave = self.get_object()
+        if leave.status != 'pending':
+            return Response({'error': 'Can only approve pending requests.'}, status=status.HTTP_400_BAD_REQUEST)
+        leave.status = 'approved'
+        leave.save()
+        
+        # Sync with attendance
+        self._sync_attendance(leave)
+        
+        Notification.objects.create(
+            recipient=leave.teacher.user,
+            title="Leave Approved",
+            message=f"Your leave request from {leave.from_date} to {leave.to_date} has been approved.",
+            notification_type="system"
+        )
+        return Response({'status': 'Leave approved'})
+
+    @action(detail=True, methods=['POST'])
+    def reject(self, request, pk=None):
+        if not request.user.is_staff:
+            return Response({'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+        leave = self.get_object()
+        if leave.status != 'pending':
+            return Response({'error': 'Can only reject pending requests.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        remarks = request.data.get('remarks', '').strip()
+        if not remarks:
+            return Response({'error': 'Remarks are mandatory for rejection.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        leave.status = 'rejected'
+        leave.admin_remarks = remarks
+        leave.save()
+        
+        Notification.objects.create(
+            recipient=leave.teacher.user,
+            title="Leave Rejected",
+            message=f"Your leave request from {leave.from_date} to {leave.to_date} was rejected. Remarks: {remarks}",
+            notification_type="system"
+        )
+        return Response({'status': 'Leave rejected'})
+        
+    @action(detail=True, methods=['POST'])
+    def cancel(self, request, pk=None):
+        leave = self.get_object()
+        user = request.user
+        if hasattr(user, 'teacher_profile'):
+            if leave.teacher != user.teacher_profile:
+                return Response({'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
+        if leave.status != 'pending':
+            return Response({'error': 'Can only cancel pending requests.'}, status=status.HTTP_400_BAD_REQUEST)
+        leave.delete()
+        return Response({'status': 'Leave request cancelled'})
+
+    @action(detail=False, methods=['GET'])
+    def analytics(self, request):
+        user = request.user
+        from django.db.models import Sum
+        
+        # Determine teachers to fetch stats for
+        if user.is_staff:
+            teachers = Teacher.objects.all().select_related('user')
+        elif hasattr(user, 'teacher_profile'):
+            teachers = Teacher.objects.filter(id=user.teacher_profile.id).select_related('user')
+        else:
+            return Response({'error': 'Unauthorized'}, status=403)
+            
+        leave_types = LeaveType.objects.filter(is_active=True)
+        stats = []
+        
+        for t in teachers:
+            breakdown = []
+            teacher_total_allocated = 0
+            teacher_total_used = 0
+            teacher_total_pending = 0
+            
+            for lt in leave_types:
+                # Get allocation
+                allocation = TeacherLeaveAllocation.objects.filter(teacher=t, leave_type=lt).first()
+                allocated = allocation.allocated_days if allocation else 0
+                
+                # Used leaves
+                used_qs = LeaveRequest.objects.filter(teacher=t, leave_type=lt, status='approved')
+                used = used_qs.aggregate(total=Sum('days'))['total'] or 0
+                
+                # Pending leaves
+                pending_qs = LeaveRequest.objects.filter(teacher=t, leave_type=lt, status='pending')
+                pending = pending_qs.aggregate(total=Sum('days'))['total'] or 0
+                
+                balance = max(0, allocated - (used + pending))
+                
+                breakdown.append({
+                    'leave_type_id': lt.id,
+                    'leave_type_name': lt.name,
+                    'is_paid': lt.is_paid,
+                    'allocated': allocated,
+                    'used': used,
+                    'pending': pending,
+                    'balance': balance
+                })
+                
+                teacher_total_allocated += allocated
+                teacher_total_used += used
+                teacher_total_pending += pending
+            
+            # Overall approved/rejected counts
+            approved_count = LeaveRequest.objects.filter(teacher=t, status='approved').count()
+            rejected_count = LeaveRequest.objects.filter(teacher=t, status='rejected').count()
+                
+            stats.append({
+                'teacher_id': t.id,
+                'teacher_name': t.user.get_full_name(),
+                'total_allocated': teacher_total_allocated,
+                'used_leaves': teacher_total_used,
+                'pending_leaves': teacher_total_pending,
+                'balance': max(0, teacher_total_allocated - (teacher_total_used + teacher_total_pending)),
+                'approved_count': approved_count,
+                'rejected_count': rejected_count,
+                'breakdown': breakdown
+            })
+            
+        return Response(stats)
+
+    @action(detail=False, methods=['POST'])
+    def check_conflicts(self, request):
+        teacher_id = request.data.get('teacher_id')
+        from_date = request.data.get('from_date')
+        to_date = request.data.get('to_date')
+        
+        if not teacher_id or not from_date or not to_date:
+            return Response({'error': 'Missing parameters'}, status=400)
+            
+        # Check OnlineClass
+        online_conflicts = OnlineClass.objects.filter(
+            teacher_id=teacher_id,
+            date__range=[from_date, to_date]
+        ).exists()
+        
+        # Check TeacherMeeting
+        meeting_conflicts = TeacherMeeting.objects.filter(
+            teacher_id=teacher_id,
+            date_time__date__range=[from_date, to_date]
+        ).exists()
+        
+        has_conflict = online_conflicts or meeting_conflicts
+        
+        return Response({
+            'has_conflict': has_conflict,
+            'message': 'You have scheduled classes or meetings during this period.' if has_conflict else 'No conflicts'
+        })
+
+class TeacherLeaveAllocationViewSet(viewsets.ModelViewSet):
+    queryset = TeacherLeaveAllocation.objects.all().select_related('teacher__user', 'leave_type')
+    serializer_class = TeacherLeaveAllocationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        user = self.request.user
+        if hasattr(user, 'teacher_profile') and not user.is_staff:
+            return qs.filter(teacher=user.teacher_profile)
+        return qs
+
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            if not self.request.user.is_staff:
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied("Only admins can manage leave allocations.")
+        return super().get_permissions()
+
+    def create(self, request, *args, **kwargs):
+        teacher_id = request.data.get('teacher')
+        leave_type_id = request.data.get('leave_type')
+        allocated_days = request.data.get('allocated_days', 0)
+        notes = request.data.get('notes', '')
+
+        if not teacher_id or not leave_type_id:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({'error': 'Teacher and Leave Type are required.'})
+
+        allocation, created = TeacherLeaveAllocation.objects.update_or_create(
+            teacher_id=teacher_id,
+            leave_type_id=leave_type_id,
+            defaults={
+                'allocated_days': allocated_days,
+                'notes': notes
+            }
+        )
+        serializer = self.get_serializer(allocation)
+        return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)

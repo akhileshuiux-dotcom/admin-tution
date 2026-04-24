@@ -50,6 +50,8 @@ class Student(models.Model):
     assigned_teacher = models.ForeignKey('Teacher', on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_students')
     lead_source = models.CharField(max_length=100, blank=True)
     reference_by = models.CharField(max_length=100, blank=True)
+    batch = models.CharField(max_length=50, blank=True) # Morning Batch, Evening Batch
+    permanent_address = models.TextField(blank=True)
 
     def save(self, *args, **kwargs):
         if not self.student_id:
@@ -66,12 +68,36 @@ class Teacher(models.Model):
         ('active', 'Active'),
         ('inactive', 'Inactive'),
     )
+    GENDER_CHOICES = (
+        ('male', 'Male'),
+        ('female', 'Female'),
+        ('other', 'Other'),
+    )
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='teacher_profile')
     employee_id = models.CharField(max_length=20, unique=True, blank=True)
-    bio = models.TextField(blank=True)
+    
+    # Personal Info
+    phone_number = models.CharField(max_length=20, blank=True)
+    gender = models.CharField(max_length=10, choices=GENDER_CHOICES, default='male')
+    dob = models.DateField(null=True, blank=True)
+    
+    # Professional Info
     specialization = models.CharField(max_length=100)
+    qualification = models.CharField(max_length=255, blank=True)
+    experience_years = models.IntegerField(default=0)
+    joining_date = models.DateField(null=True, blank=True)
+    assigned_classes = models.JSONField(default=list, blank=True) # List of grades e.g. ["10th", "12th"]
+    bio = models.TextField(blank=True)
+    
+    # Address Info
+    current_address = models.TextField(blank=True)
+    permanent_address = models.TextField(blank=True)
+    
+    # Finance & System
     monthly_salary = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    profile_photo = models.ImageField(upload_to='teacher_photos/', null=True, blank=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='active')
+    needs_password_change = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
         if not self.employee_id:
@@ -94,6 +120,25 @@ class Teacher(models.Model):
 
     def __str__(self):
         return f"Prof. {self.user.last_name} ({self.employee_id})"
+
+class PasswordResetRequest(models.Model):
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+        ('completed', 'Completed'),
+    )
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name='reset_requests')
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='pending')
+    request_date = models.DateTimeField(auto_now_add=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    admin_note = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['-request_date']
+
+    def __str__(self):
+        return f"Reset for {self.teacher.user.get_full_name()} ({self.status})"
 
 class Subject(models.Model):
     name = models.CharField(max_length=100)
@@ -296,16 +341,187 @@ class Attendance(models.Model):
     def __str__(self):
         return f"{self.student.user.get_full_name()} - {self.date} - {self.status}"
 
+class Holiday(models.Model):
+    date = models.DateField(unique=True)
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['-date']
+
+    def __str__(self):
+        return f"{self.name} ({self.date})"
+
+class SchoolSettings(models.Model):
+    LOCATION_SOURCE_CHOICES = (
+        ('search', 'Search'),
+        ('map', 'Map Selection'),
+        ('current', 'Current Location'),
+    )
+    name = models.CharField(max_length=100, default='Main Campus')
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, default=28.6139)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, default=77.2090)
+    radius_meters = models.IntegerField(default=50)
+    address = models.TextField(blank=True)
+    
+    # New fields for Geofence UI enhancement
+    location_name = models.CharField(max_length=255, blank=True, null=True)
+    location_source = models.CharField(max_length=20, choices=LOCATION_SOURCE_CHOICES, default='map')
+    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='geofence_updates')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = "School Settings"
+
+    def __str__(self):
+        return self.name
+
+class RegularizationRequest(models.Model):
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    )
+    TYPE_CHOICES = (
+        ('missed_check_in', 'Missed Check-in'),
+        ('missed_check_out', 'Missed Check-out'),
+        ('wrong_check_in_time', 'Wrong Check-in Time'),
+        ('wrong_check_out_time', 'Wrong Check-out Time'),
+        ('full_day_correction', 'Full Day Correction'),
+        ('other', 'Other'),
+    )
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name='regularization_requests')
+    attendance_date = models.DateField()
+    request_type = models.CharField(max_length=25, choices=TYPE_CHOICES)
+    reason = models.TextField()
+    
+    # Requested Correction Data
+    requested_check_in = models.TimeField(null=True, blank=True)
+    requested_check_out = models.TimeField(null=True, blank=True)
+    
+    # Audit Trail (captured at approval)
+    original_check_in = models.TimeField(null=True, blank=True)
+    original_check_out = models.TimeField(null=True, blank=True)
+    original_status = models.CharField(max_length=25, null=True, blank=True)
+    
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    admin_note = models.TextField(blank=True)
+    attachment = models.FileField(upload_to='attendance_regularization/', null=True, blank=True)
+    
+    # Approval metadata
+    approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_regularizations')
+    approved_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.teacher.user.get_full_name()} - {self.attendance_date} ({self.status})"
+
+class LeaveType(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True)
+    is_paid = models.BooleanField(default=False)
+    max_allowed_days = models.IntegerField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    
+    def __str__(self):
+        return self.name
+
+class TeacherLeaveAllocation(models.Model):
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name='leave_allocations')
+    leave_type = models.ForeignKey(LeaveType, on_delete=models.CASCADE, related_name='allocations')
+    allocated_days = models.FloatField(default=0)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('teacher', 'leave_type')
+
+    def __str__(self):
+        return f"{self.teacher.user.get_full_name()} - {self.leave_type.name} ({self.allocated_days})"
+
+class LeaveRequest(models.Model):
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    )
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name='leave_requests')
+    leave_type = models.ForeignKey(LeaveType, on_delete=models.SET_NULL, null=True, related_name='leave_requests')
+    from_date = models.DateField()
+    to_date = models.DateField()
+    days = models.FloatField(default=1.0)
+    reason = models.TextField()
+    attachment = models.FileField(upload_to='leave_attachments/', null=True, blank=True)
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='pending')
+    admin_remarks = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def save(self, *args, **kwargs):
+        if self.from_date and self.to_date:
+            delta = self.to_date - self.from_date
+            self.days = float(delta.days + 1)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.teacher.user.get_full_name()} - {self.leave_type} ({self.from_date} to {self.to_date})"
+
 class TeacherAttendance(models.Model):
     STATUS_CHOICES = (
         ('present', 'Present'),
         ('absent', 'Absent'),
         ('late', 'Late'),
+        ('leave', 'Leave'),
+        ('half_day', 'Half Day'),
+        ('holiday', 'Holiday'),
+        ('checked_in', 'Checked-in'),
+        ('checked_out', 'Checked-out'),
+        ('not_marked', 'Not Marked'),
+        ('regularization_pending', 'Regularization Pending'),
+        ('corrected', 'Corrected'),
+    )
+    SOURCE_CHOICES = (
+        ('admin', 'Admin Marked'),
+        ('self', 'Teacher Self Check-in'),
     )
     teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name='attendance_records')
     date = models.DateField()
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='present')
+    status = models.CharField(max_length=25, choices=STATUS_CHOICES, default='present')
+    
+    # Check-in Details
+    check_in = models.TimeField(null=True, blank=True)
+    check_in_selfie = models.ImageField(upload_to='attendance_selfies/in/%Y/%m/%d/', null=True, blank=True)
+    check_in_lat = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    check_in_lng = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    check_in_verified = models.BooleanField(default=False)
+    
+    # Check-out Details
+    check_out = models.TimeField(null=True, blank=True)
+    check_out_selfie = models.ImageField(upload_to='attendance_selfies/out/%Y/%m/%d/', null=True, blank=True)
+    check_out_lat = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    check_out_lng = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    check_out_verified = models.BooleanField(default=False)
+    
+    distance_meters = models.IntegerField(null=True, blank=True)
+    attendance_source = models.CharField(max_length=10, choices=SOURCE_CHOICES, default='admin')
+    
     notes = models.TextField(blank=True)
+    leave_reason = models.TextField(blank=True)
+    
+    # Audit History
+    marked_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='teacher_attendance_marked')
+    is_corrected = models.BooleanField(default=False)
+    corrected_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='teacher_attendance_corrected')
+    correction_time = models.DateTimeField(null=True, blank=True)
+    correction_reason = models.TextField(blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         unique_together = ('teacher', 'date')
@@ -332,7 +548,7 @@ class AdminMeeting(models.Model):
         return f"{self.title} on {self.date_time.strftime('%Y-%m-%d %H:%M')}"
 
 class StudentPayment(models.Model):
-    PAYMENT_STATUS = (('paid', 'Paid'), ('partial', 'Partial'), ('unpaid', 'Unpaid'))
+    PAYMENT_STATUS = (('paid', 'Paid'), ('partial', 'Partial'), ('unpaid', 'Unpaid'), ('pending', 'Pending'))
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='payments')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     date = models.DateField()
@@ -779,3 +995,130 @@ class PaperPurchase(models.Model):
     def __str__(self):
         return f"{self.student.user.get_full_name()} - {self.paper.title} ({self.status})"
 
+class Post(models.Model):
+    POST_TYPES = (
+        ('announcement', 'Announcement'),
+        ('event', 'Event'),
+        ('notice', 'Notice'),
+        ('update', 'General Update'),
+    )
+    AUDIENCE_CHOICES = (
+        ('students', 'Students Only'),
+        ('teachers', 'Teachers Only'),
+        ('both', 'Both Students and Teachers'),
+    )
+    PRIORITY_CHOICES = (
+        ('normal', 'Normal'),
+        ('important', 'Important'),
+        ('urgent', 'Urgent'),
+    )
+    STATUS_CHOICES = (
+        ('draft', 'Draft'),
+        ('published', 'Published'),
+        ('unpublished', 'Unpublished'),
+        ('expired', 'Expired'),
+    )
+
+    title = models.CharField(max_length=255)
+    content = models.TextField()
+    post_type = models.CharField(max_length=20, choices=POST_TYPES, default='update')
+    publish_date = models.DateTimeField(null=True, blank=True)
+    event_date = models.DateTimeField(null=True, blank=True)
+    attachment = models.FileField(upload_to='posts/', null=True, blank=True)
+    audience = models.CharField(max_length=20, choices=AUDIENCE_CHOICES, default='both')
+    priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='normal')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='posts')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    expiry_date = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"[{self.post_type.upper()}] {self.title} ({self.status})"
+
+
+class TeacherPermission(models.Model):
+    """
+    Stores global or per-role permissions for teachers.
+    In current implementation, we use a single instance to control all teachers.
+    """
+    permissions = models.JSONField(default=dict)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Teacher Permissions (Updated: {self.updated_at.strftime('%Y-%m-%d %H:%M')})"
+
+    @classmethod
+    def get_default_permissions(cls):
+        return {
+            "student": {
+                "add_student": False,
+                "edit_student": False,
+                "view_student_list": True,
+                "delete_student": False,
+                "view_academic_records": True,
+            },
+            "attendance": {
+                "mark_attendance": False,
+                "edit_attendance": False,
+                "view_attendance": True,
+            },
+            "exam": {
+                "create_exam": False,
+                "assign_exam": False,
+                "evaluate_exams": False,
+                "publish_results": False,
+                "view_results": True,
+            },
+            "notes": {
+                "upload_notes": False,
+                "edit_notes": False,
+                "delete_notes": False,
+                "view_notes": True,
+            },
+            "meeting": {
+                "schedule_class": False,
+                "start_online_class": False,
+                "view_scheduled_classes": True,
+                "manage_offline_class": True,
+            },
+            "communication": {
+                "send_notifications": False,
+                "post_announcements": False,
+                "view_announcements": True,
+            },
+            "profile": {
+                "view_own_profile": True,
+                "edit_own_profile": True,
+            }
+        }
+
+
+
+class Notification(models.Model):
+    NOTIFICATION_TYPES = (
+        ('academic', 'Academic'),
+        ('attendance', 'Attendance'),
+        ('exam', 'Exam'),
+        ('salary', 'Salary'),
+        ('payment', 'Payment'),
+        ('meeting', 'Meeting'),
+        ('notes', 'Notes'),
+        ('announcement', 'Announcement'),
+        ('system', 'System'),
+    )
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES, default='system')
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.recipient.username} - {self.title} ({self.notification_type})"

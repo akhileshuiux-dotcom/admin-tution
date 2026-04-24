@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, Users, GraduationCap, BookOpen, 
   CalendarDays, CreditCard, ShieldCheck, Award,
-  Menu, X, ChevronRight, Bell, LogOut
+  Menu, X, ChevronRight, Bell, LogOut, ChevronDown
 } from 'lucide-react';
 
-// Import Views (to be created)
+// Import Views
 import AdminOverviewView from './views/AdminOverviewView';
 import AdminStudentsView from './views/AdminStudentsView';
 import AdminTeachersView from './views/AdminTeachersView';
@@ -14,10 +14,48 @@ import AdminCoursesView from './views/AdminCoursesView';
 import AdminMeetingsView from './views/AdminMeetingsView';
 import AdminFinanceView from './views/AdminFinanceView';
 import ResultsEntryView from './views/ResultsEntryView';
+import AdminNoticesView from './views/AdminNoticesView';
+import AdminTeacherAttendanceView from './views/AdminTeacherAttendanceView';
+import AdminTeacherLeaveManagement from './views/AdminTeacherLeaveManagement';
+
+// Import Profile Views
+import AdminProfileView from './views/AdminProfileView';
+import AdminAccountSettingsView from './views/AdminAccountSettingsView';
+import AdminSecurityView from './views/AdminSecurityView';
+import AdminNotificationsView from './views/AdminNotificationsView';
+import AdminRolePermissionsView from './views/AdminRolePermissionsView';
+import AdminActivityLogView from './views/AdminActivityLogView';
+import AdminHelpSupportView from './views/AdminHelpSupportView';
+
+// Import Common
+import AdminProfileDropdown from './common/AdminProfileDropdown';
+import LogoutConfirmationModal from './common/LogoutConfirmationModal';
+import NotificationPanel from './common/NotificationPanel';
+
 
 const AdminDashboard = ({ user, onLogout }) => {
   const [activeTab, setActiveTab] = useState('Overview');
   const [isSidebarOpen, setSidebarOpen] = useState(true);
+  const [showProfile, setShowProfile] = useState(false);
+  const [showNotifs, setShowNotifs] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  
+  const profileRef = useRef(null);
+  const headerRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setShowProfile(false);
+      }
+      if (headerRef.current && !headerRef.current.contains(event.target)) {
+        setShowNotifs(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const menuItems = [
     { id: 'Overview', icon: LayoutDashboard, label: 'Overview', color: '#6366f1' },
@@ -27,18 +65,35 @@ const AdminDashboard = ({ user, onLogout }) => {
     { id: 'Meetings', icon: CalendarDays, label: 'Admin Meetings', color: '#ec4899' },
     { id: 'Finance', icon: CreditCard, label: 'Payment & Finance', color: '#10b981' },
     { id: 'Results', icon: Award, label: 'Exam Results', color: '#facc15' },
+    { id: 'Notices', icon: Bell, label: 'Posts & Updates', color: '#f43f5e' },
+    { id: 'TeacherAttendance', icon: CalendarDays, label: 'Teacher Attendance', color: '#0d9488' },
+    { id: 'LeaveManagement', icon: CalendarDays, label: 'Leave Management', color: '#14b8a6' },
   ];
+
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'Overview': return <AdminOverviewView user={user} />;
+      case 'Overview': return <AdminOverviewView user={user} setActiveTab={setActiveTab} />;
       case 'Students': return <AdminStudentsView />;
       case 'Teachers': return <AdminTeachersView />;
       case 'Courses':  return <AdminCoursesView />;
       case 'Meetings': return <AdminMeetingsView />;
       case 'Finance':  return <AdminFinanceView />;
       case 'Results':  return <ResultsEntryView user={user} />;
-      default: return <AdminOverviewView user={user} />;
+      case 'Notices':  return <AdminNoticesView />;
+      case 'TeacherAttendance': return <AdminTeacherAttendanceView user={user} />;
+      case 'LeaveManagement': return <AdminTeacherLeaveManagement />;
+      
+      // Profile Views
+      case 'AdminProfile': return <AdminProfileView user={user} />;
+      case 'AdminAccountSettings': return <AdminAccountSettingsView />;
+      case 'AdminSecurity': return <AdminSecurityView />;
+      case 'AdminNotifications': return <AdminNotificationsView />;
+      case 'AdminRolePermissions': return <AdminRolePermissionsView />;
+      case 'AdminActivityLog': return <AdminActivityLogView />;
+      case 'AdminHelpSupport': return <AdminHelpSupportView />;
+
+      default: return <AdminOverviewView user={user} setActiveTab={setActiveTab} />;
     }
   };
 
@@ -46,8 +101,20 @@ const AdminDashboard = ({ user, onLogout }) => {
     ? `${user.user.first_name} ${user.user.last_name || ''}`.trim() 
     : user?.user?.username || 'Administrator';
 
+  const handleProfileNavigate = (view) => {
+    setActiveTab(view);
+    setShowProfile(false);
+  };
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f1f5f9', fontFamily: 'Inter, system-ui, sans-serif' }}>
+      
+      <LogoutConfirmationModal 
+        isOpen={showLogoutModal} 
+        onClose={() => setShowLogoutModal(false)} 
+        onConfirm={onLogout} 
+      />
+
       {/* Sidebar */}
       <motion.aside
         initial={false}
@@ -127,7 +194,7 @@ const AdminDashboard = ({ user, onLogout }) => {
         {/* Sidebar Footer */}
         <div style={{ padding: '16px', borderTop: '1px solid #f1f5f9' }}>
           <button
-            onClick={onLogout}
+            onClick={() => setShowLogoutModal(true)}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -173,20 +240,71 @@ const AdminDashboard = ({ user, onLogout }) => {
             {isSidebarOpen ? <X size={18} color="#64748b" /> : <Menu size={18} color="#64748b" />}
           </button>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 20 }} ref={headerRef}>
             <div style={{ position: 'relative', cursor: 'pointer' }}>
-              <Bell size={20} color="#64748b" />
-              <span style={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, background: '#ef4444', borderRadius: '50%', border: '2px solid #fff' }}></span>
+              <button 
+                onClick={() => { setShowNotifs(!showNotifs); setShowProfile(false); }}
+                style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 4, position: 'relative' }}
+              >
+                <Bell size={20} color={showNotifs ? '#6366f1' : '#64748b'} />
+                {unreadCount > 0 && (
+                  <span style={{ position: 'absolute', top: -2, right: -2, width: 14, height: 14, background: '#ef4444', borderRadius: '50%', border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 900, color: '#fff' }}>
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+              
+              <AnimatePresence>
+                {showNotifs && (
+                  <NotificationPanel 
+                    onClose={() => setShowNotifs(false)} 
+                    onUnreadCountChange={setUnreadCount}
+                  />
+                )}
+              </AnimatePresence>
             </div>
             <div style={{ height: 32, width: 1, background: '#e2e8f0' }}></div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ textAlign: 'right' }}>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#1e293b' }}>{displayName}</p>
-                <p style={{ margin: 0, fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Super Admin</p>
-              </div>
-              <div style={{ width: 38, height: 38, borderRadius: 12, background: '#1e293b', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 16 }}>
-                {displayName[0]?.toUpperCase()}
-              </div>
+            
+            {/* Profile Section */}
+            <div className="relative" ref={profileRef}>
+              <button 
+                onClick={() => setShowProfile(!showProfile)}
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 12, 
+                  border: 'none', 
+                  background: 'transparent', 
+                  cursor: 'pointer',
+                  padding: '4px 8px',
+                  borderRadius: 12,
+                  transition: 'all 0.2s'
+                }}
+                className={showProfile ? 'bg-slate-50' : 'hover:bg-slate-50'}
+              >
+                <div style={{ textAlign: 'right' }}>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#1e293b' }}>{displayName}</p>
+                  <p style={{ margin: 0, fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Super Admin</p>
+                </div>
+                <div style={{ width: 38, height: 38, borderRadius: 12, background: '#1e293b', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 16, position: 'relative' }}>
+                  {displayName[0]?.toUpperCase()}
+                  <div style={{ position: 'absolute', bottom: -2, right: -2, width: 12, height: 12, background: '#10b981', borderRadius: '50%', border: '2px solid #fff' }}></div>
+                </div>
+                <ChevronDown size={14} color="#94a3b8" style={{ transform: showProfile ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+              </button>
+
+              <AnimatePresence>
+                {showProfile && (
+                  <AdminProfileDropdown 
+                    user={user} 
+                    onNavigate={handleProfileNavigate}
+                    onLogout={() => {
+                      setShowProfile(false);
+                      setShowLogoutModal(true);
+                    }}
+                  />
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </header>
@@ -211,3 +329,4 @@ const AdminDashboard = ({ user, onLogout }) => {
 };
 
 export default AdminDashboard;
+

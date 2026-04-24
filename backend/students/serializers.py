@@ -6,7 +6,9 @@ from .models import (
     StudentPayment, TeacherSalary, Expense, Income, TeacherAttendance,
     FeeTier, StudentDiscount, Invoice, StudentAnswer, SubjectMark,
     CreditAdvance, FinancialTransaction, FeeInstallment, NoteAssignment, OnlineClass, TeacherMeeting,
-    PreviousYearPaper, PaperQuestion, PaperAttempt, PaperAnswer, PaperPurchase
+    PreviousYearPaper, PaperQuestion, PaperAttempt, PaperAnswer, PaperPurchase, Post, TeacherPermission,
+    Holiday, SchoolSettings, RegularizationRequest, Notification, PasswordResetRequest,
+    LeaveType, LeaveRequest, TeacherLeaveAllocation
 )
 
 class UserSerializer(serializers.ModelSerializer):
@@ -28,7 +30,12 @@ class TeacherSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Teacher
-        fields = ['id', 'user', 'employee_id', 'bio', 'specialization', 'monthly_salary', 'status']
+        fields = [
+            'id', 'user', 'employee_id', 'phone_number', 'gender', 'dob',
+            'specialization', 'qualification', 'experience_years', 'joining_date',
+            'assigned_classes', 'bio', 'current_address', 'permanent_address',
+            'monthly_salary', 'profile_photo', 'status', 'needs_password_change'
+        ]
 
     def create(self, validated_data):
         user_data = validated_data.pop('user')
@@ -71,7 +78,7 @@ class StudentSerializer(serializers.ModelSerializer):
             'id', 'user', 'student_id', 'grade', 'enrolled_date', 'bio', 'points', 'parent_name', 'parent_contact', 'medical_info',
             'subjects', 'subject_ids', 'plan_type', 'syllabus', 'sessions_per_week', 'location', 
             'learning_goals', 'special_requirements', 'status', 'plan_status', 'payments', 'monthly_fee',
-            'assigned_teacher', 'lead_source', 'reference_by'
+            'assigned_teacher', 'lead_source', 'reference_by', 'batch', 'permanent_address'
         ]
 
     def create(self, validated_data):
@@ -327,8 +334,42 @@ class IncomeSerializer(serializers.ModelSerializer):
         model = Income
         fields = '__all__'
 
+class HolidaySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Holiday
+        fields = '__all__'
+
+class SchoolSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SchoolSettings
+        fields = '__all__'
+
+class RegularizationRequestSerializer(serializers.ModelSerializer):
+    teacher_name = serializers.CharField(source='teacher.user.get_full_name', read_only=True)
+    current_attendance_data = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = RegularizationRequest
+        fields = '__all__'
+        
+    def get_current_attendance_data(self, obj):
+        from .models import TeacherAttendance
+        try:
+            att = TeacherAttendance.objects.get(teacher=obj.teacher, date=obj.attendance_date)
+            return {
+                'check_in': att.check_in,
+                'check_out': att.check_out,
+                'status': att.status
+            }
+        except:
+            return None
+
 class TeacherAttendanceSerializer(serializers.ModelSerializer):
     teacher_name = serializers.CharField(source='teacher.user.get_full_name', read_only=True)
+    teacher_id_code = serializers.CharField(source='teacher.employee_id', read_only=True)
+    marked_by_name = serializers.CharField(source='marked_by.get_full_name', read_only=True)
+    corrected_by_name = serializers.CharField(source='corrected_by.get_full_name', read_only=True)
+    
     class Meta:
         model = TeacherAttendance
         fields = '__all__'
@@ -448,3 +489,260 @@ class PaperPurchaseSerializer(serializers.ModelSerializer):
         model = PaperPurchase
         fields = '__all__'
 
+class PostSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.CharField(source='created_by.get_full_name', read_only=True)
+    class Meta:
+        model = Post
+        fields = '__all__'
+        read_only_fields = ['created_by', 'created_at', 'updated_at']
+
+
+class TeacherPermissionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TeacherPermission
+        fields = '__all__'
+
+class NotificationSerializer(serializers.ModelSerializer):
+    created_date = serializers.SerializerMethodField()
+    created_time = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Notification
+        fields = [
+            'id', 'recipient', 'title', 'message', 'notification_type', 
+            'is_read', 'created_at', 'created_date', 'created_time'
+        ]
+
+    def get_created_date(self, obj):
+        return obj.created_at.strftime('%d %b %Y')
+
+    def get_created_time(self, obj):
+        return obj.created_at.strftime('%I:%M %p')
+
+class PasswordResetRequestSerializer(serializers.ModelSerializer):
+    teacher_name = serializers.CharField(source='teacher.user.get_full_name', read_only=True)
+    teacher_emp_id = serializers.CharField(source='teacher.employee_id', read_only=True)
+    teacher_email = serializers.CharField(source='teacher.user.email', read_only=True)
+class IncomeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Income
+        fields = '__all__'
+
+class HolidaySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Holiday
+        fields = '__all__'
+
+class SchoolSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SchoolSettings
+        fields = '__all__'
+
+class RegularizationRequestSerializer(serializers.ModelSerializer):
+    teacher_name = serializers.CharField(source='teacher.user.get_full_name', read_only=True)
+    current_attendance_data = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = RegularizationRequest
+        fields = '__all__'
+        
+    def get_current_attendance_data(self, obj):
+        from .models import TeacherAttendance
+        try:
+            att = TeacherAttendance.objects.get(teacher=obj.teacher, date=obj.attendance_date)
+            return {
+                'check_in': att.check_in,
+                'check_out': att.check_out,
+                'status': att.status
+            }
+        except:
+            return None
+
+class TeacherAttendanceSerializer(serializers.ModelSerializer):
+    teacher_name = serializers.CharField(source='teacher.user.get_full_name', read_only=True)
+    teacher_id_code = serializers.CharField(source='teacher.employee_id', read_only=True)
+    marked_by_name = serializers.CharField(source='marked_by.get_full_name', read_only=True)
+    corrected_by_name = serializers.CharField(source='corrected_by.get_full_name', read_only=True)
+    
+    class Meta:
+        model = TeacherAttendance
+        fields = '__all__'
+
+class FeeTierSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FeeTier
+        fields = '__all__'
+
+class StudentDiscountSerializer(serializers.ModelSerializer):
+    student_name = serializers.CharField(source='student.user.get_full_name', read_only=True)
+    class Meta:
+        model = StudentDiscount
+        fields = '__all__'
+
+class InvoiceSerializer(serializers.ModelSerializer):
+    student_name = serializers.CharField(source='student.user.get_full_name', read_only=True)
+    student_id_code = serializers.CharField(source='student.student_id', read_only=True)
+    class Meta:
+        model = Invoice
+        fields = '__all__'
+
+class CreditAdvanceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CreditAdvance
+        fields = '__all__'
+
+class FinancialTransactionSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.CharField(source='created_by.get_full_name', read_only=True)
+    class Meta:
+        model = FinancialTransaction
+        fields = '__all__'
+
+class FeeInstallmentSerializer(serializers.ModelSerializer):
+    student_name = serializers.CharField(source='student.user.get_full_name', read_only=True)
+    student_grade = serializers.CharField(source='student.grade', read_only=True)
+    student_id_code = serializers.CharField(source='student.student_id', read_only=True)
+    
+    class Meta:
+        model = FeeInstallment
+        fields = '__all__'
+
+
+class NoteAssignmentSerializer(serializers.ModelSerializer):
+    student_name = serializers.CharField(source='student.user.get_full_name', read_only=True)
+    student_grade = serializers.CharField(source='student.grade', read_only=True)
+    student_id_code = serializers.CharField(source='student.student_id', read_only=True)
+    note_title = serializers.CharField(source='note.title', read_only=True)
+
+    class Meta:
+        model = NoteAssignment
+        fields = [
+            'id', 'note', 'student', 'student_name', 'student_grade',
+            'student_id_code', 'note_title', 'status', 'submission_file',
+            'submission_text', 'completed_at', 'created_at'
+        ]
+        read_only_fields = ['status', 'completed_at', 'created_at']
+
+
+class OnlineClassSerializer(serializers.ModelSerializer):
+    teacher_name = serializers.CharField(source='teacher.user.get_full_name', read_only=True)
+
+    class Meta:
+        model = OnlineClass
+        fields = [
+            'id', 'teacher', 'teacher_name', 'title', 'category',
+            'date', 'start_time', 'end_time', 'link', 'description', 'created_at'
+        ]
+        read_only_fields = ['created_at', 'teacher']
+
+
+class TeacherMeetingSerializer(serializers.ModelSerializer):
+    teacher_name = serializers.CharField(source='teacher.user.get_full_name', read_only=True)
+    student_ids = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=Student.objects.all(), source='students', required=False
+    )
+
+    class Meta:
+        model = TeacherMeeting
+        fields = [
+            'id', 'teacher', 'teacher_name', 'title', 'description',
+            'date_time', 'meeting_link', 'student_ids', 'created_at'
+        ]
+        read_only_fields = ['created_at', 'teacher', 'teacher_name']
+
+class PaperQuestionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PaperQuestion
+        fields = '__all__'
+
+class PreviousYearPaperSerializer(serializers.ModelSerializer):
+    subject_name = serializers.CharField(source='subject.name', read_only=True)
+    course_name = serializers.CharField(source='course.name', read_only=True)
+    questions = PaperQuestionSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = PreviousYearPaper
+        fields = '__all__'
+
+class PaperAnswerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PaperAnswer
+        fields = '__all__'
+
+class PaperAttemptSerializer(serializers.ModelSerializer):
+    student_name = serializers.CharField(source='student.user.get_full_name', read_only=True)
+    paper_title = serializers.CharField(source='paper.title', read_only=True)
+    answers = PaperAnswerSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = PaperAttempt
+        fields = '__all__'
+        read_only_fields = ['started_at']
+
+class PaperPurchaseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PaperPurchase
+        fields = '__all__'
+
+class PostSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.CharField(source='created_by.get_full_name', read_only=True)
+    class Meta:
+        model = Post
+        fields = '__all__'
+        read_only_fields = ['created_by', 'created_at', 'updated_at']
+
+
+class TeacherPermissionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TeacherPermission
+        fields = '__all__'
+
+class NotificationSerializer(serializers.ModelSerializer):
+    created_date = serializers.SerializerMethodField()
+    created_time = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Notification
+        fields = [
+            'id', 'recipient', 'title', 'message', 'notification_type', 
+            'is_read', 'created_at', 'created_date', 'created_time'
+        ]
+
+    def get_created_date(self, obj):
+        return obj.created_at.strftime('%d %b %Y')
+
+    def get_created_time(self, obj):
+        return obj.created_at.strftime('%I:%M %p')
+
+class PasswordResetRequestSerializer(serializers.ModelSerializer):
+    teacher_name = serializers.CharField(source='teacher.user.get_full_name', read_only=True)
+    teacher_emp_id = serializers.CharField(source='teacher.employee_id', read_only=True)
+    teacher_email = serializers.CharField(source='teacher.user.email', read_only=True)
+
+    class Meta:
+        model = PasswordResetRequest
+        fields = '__all__'
+
+class LeaveTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LeaveType
+        fields = '__all__'
+
+class LeaveRequestSerializer(serializers.ModelSerializer):
+    teacher_name = serializers.CharField(source='teacher.user.get_full_name', read_only=True)
+    leave_type_name = serializers.CharField(source='leave_type.name', read_only=True)
+
+    class Meta:
+        model = LeaveRequest
+        fields = '__all__'
+        read_only_fields = ['days', 'created_at', 'updated_at', 'teacher_name', 'leave_type_name']
+        extra_kwargs = {
+            'teacher': {'required': False}
+        }
+
+class TeacherLeaveAllocationSerializer(serializers.ModelSerializer):
+    teacher_name = serializers.CharField(source='teacher.user.get_full_name', read_only=True)
+    leave_type_name = serializers.CharField(source='leave_type.name', read_only=True)
+
+    class Meta:
+        model = TeacherLeaveAllocation
+        fields = '__all__'

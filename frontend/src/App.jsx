@@ -1,6 +1,6 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Lock, X, ShieldAlert, CheckCircle2 } from 'lucide-react';
 import api from './api';
 import Background from './components/Background';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -25,6 +25,13 @@ const NotesView = lazy(() => import('./components/views/NotesView'));
 const StudentAttendanceView = lazy(() => import('./components/views/StudentAttendanceView'));
 const StudentPapersView = lazy(() => import('./components/views/StudentPapersView'));
 const StudentGamesView = lazy(() => import('./components/views/StudentGamesView'));
+const StudentNoticesView = lazy(() => import('./components/views/StudentNoticesView'));
+const StudentProfileView = lazy(() => import('./components/views/StudentProfileView'));
+const StudentSettingsView = lazy(() => import('./components/views/StudentSettingsView'));
+const StudentAcademicRecordsView = lazy(() => import('./components/views/StudentAcademicRecordsView'));
+const StudentHelpSupportView = lazy(() => import('./components/views/StudentHelpSupportView'));
+
+
 
 function App() {
   const [user, setUser] = useState(null);
@@ -36,6 +43,23 @@ function App() {
   const [loginRole, setLoginRole] = useState('student');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotIdentifier, setForgotIdentifier] = useState('');
+  const [forgotMsg, setForgotMsg] = useState({ type: '', text: '' });
+  const [isSubmittingForgot, setIsSubmittingForgot] = useState(false);
+
+  // Forced Password Change State
+  const [showForcedChange, setShowForcedChange] = useState(false);
+  const [forcedForm, setForcedForm] = useState({ new_password: '', confirm_password: '' });
+  const [forcedError, setForcedError] = useState('');
+  const [isChangingForced, setIsChangingForced] = useState(false);
+  const [showForcedPass, setShowForcedPass] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated && user?.needs_password_change && user?.role === 'teacher') {
+      setShowForcedChange(true);
+    }
+  }, [isAuthenticated, user]);
 
   useEffect(() => {
     checkAuth();
@@ -54,6 +78,53 @@ function App() {
       try { await api.get('/csrf/'); } catch (e) {}
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    if (!forgotIdentifier) return;
+    setIsSubmittingForgot(true);
+    setForgotMsg({ type: '', text: '' });
+    try {
+      const resp = await api.post('/forgot-password/', { identifier: forgotIdentifier });
+      setForgotMsg({ type: 'success', text: resp.data.message });
+    } catch (err) {
+      setForgotMsg({ type: 'error', text: err.response?.data?.error || 'Failed to submit request' });
+    } finally {
+      setIsSubmittingForgot(false);
+    }
+  };
+
+  const handleForcedChange = async (e) => {
+    e.preventDefault();
+    if (forcedForm.new_password !== forcedForm.confirm_password) {
+      setForcedError("Passwords do not match");
+      return;
+    }
+    
+    // Simple strength check
+    const strongRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])(?=.{8,})/;
+    if (!strongRegex.test(forcedForm.new_password)) {
+      setForcedError("Password must be 8+ chars with upper, lower, number & special char.");
+      return;
+    }
+
+    setIsChangingForced(true);
+    setForcedError('');
+    try {
+      await api.post('/profile/', {
+        action: 'change_password',
+        old_password: creds.password, // We use the password they just logged in with
+        new_password: forcedForm.new_password
+      });
+      setShowForcedChange(false);
+      // Update user state locally to reflect change
+      setUser({...user, needs_password_change: false});
+    } catch (err) {
+      setForcedError(err.response?.data?.error || 'Failed to change password');
+    } finally {
+      setIsChangingForced(false);
     }
   };
 
@@ -103,7 +174,7 @@ function App() {
     const viewProps = { user };
     let content;
     switch (activeView) {
-      case 'Dashboard': content = <StudentDashboard user={user} onLogout={handleLogout} />; break;
+      case 'Dashboard': content = <StudentDashboard user={user} onLogout={handleLogout} onNavigate={onNavigate} />; break;
       case 'Schedule': content = <ScheduleView {...viewProps} />; break;
 
       case 'Tests': content = <TestsView user={user} onFocusMode={setIsFocusMode} />; break;
@@ -113,7 +184,15 @@ function App() {
       case 'PastPapers': content = <StudentPapersView {...viewProps} />; break;
       case 'Attendance': content = <StudentAttendanceView {...viewProps} />; break;
       case 'Games': content = <StudentGamesView {...viewProps} />; break;
+      case 'Notices': content = <StudentNoticesView {...viewProps} />; break;
+      
+      case 'Profile': content = <StudentProfileView {...viewProps} />; break;
+      case 'Settings': content = <StudentSettingsView {...viewProps} />; break;
+      case 'AcademicRecords': content = <StudentAcademicRecordsView {...viewProps} />; break;
+      case 'HelpSupport': content = <StudentHelpSupportView {...viewProps} />; break;
+      
       default: content = <StudentDashboard user={user} onLogout={handleLogout} />; break;
+
     }
     return renderTheme(content);
   };
@@ -192,6 +271,18 @@ function App() {
                   <button type="submit" className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:scale-[1.02] active:scale-[0.98] text-white font-black py-5 rounded-2xl shadow-2xl shadow-cyan-500/20 transition-all mt-4 tracking-widest uppercase text-sm">
                     Initialize Session
                   </button>
+
+                  {loginRole === 'teacher' && (
+                    <div className="text-center">
+                      <button 
+                        type="button" 
+                        onClick={() => { setShowForgotModal(true); setForgotMsg({type:'', text:''}); setForgotIdentifier(''); }}
+                        className="text-[10px] font-black text-cyan-500/60 uppercase tracking-widest hover:text-cyan-400 transition-colors"
+                      >
+                        Trouble accessing account? Forgot Password
+                      </button>
+                    </div>
+                  )}
                 </form>
 
                 <div className="mt-8 pt-8 border-t border-white/5 text-center">
@@ -205,6 +296,121 @@ function App() {
             <motion.div key="content" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen">
                {renderContent()}
             </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Forgot Password Modal */}
+        <AnimatePresence>
+          {showForgotModal && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowForgotModal(false)} className="absolute inset-0 bg-[#020617]/80 backdrop-blur-sm" />
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="bg-slate-900 border border-white/10 p-8 rounded-[2.5rem] w-full max-w-md relative z-10 shadow-2xl"
+              >
+                <div className="flex justify-between items-center mb-8">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center text-cyan-500">
+                      <Lock size={20} />
+                    </div>
+                    <h3 className="text-xl font-black text-white tracking-tight">Manual Reset</h3>
+                  </div>
+                  <button onClick={() => setShowForgotModal(false)} className="text-slate-500 hover:text-white transition-colors">
+                    <X size={24} />
+                  </button>
+                </div>
+
+                {forgotMsg.text ? (
+                  <div className={`p-6 rounded-2xl border ${forgotMsg.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 'bg-rose-500/10 border-rose-500/20 text-rose-500'} mb-6`}>
+                    <p className="text-sm font-bold leading-relaxed">{forgotMsg.text}</p>
+                  </div>
+                ) : (
+                  <form onSubmit={handleForgotPassword} className="space-y-6">
+                    <p className="text-slate-400 text-xs font-medium leading-relaxed">Enter your Email, Employee ID, or Username. Admin will verify and provide a temporary access key.</p>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">Identify Account</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={forgotIdentifier}
+                        onChange={e => setForgotIdentifier(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white placeholder-slate-600 outline-none focus:border-cyan-500/50 transition-all"
+                        placeholder="Email or ID..." 
+                      />
+                    </div>
+                    <button 
+                      type="submit" 
+                      disabled={isSubmittingForgot}
+                      className="w-full bg-cyan-500 hover:bg-cyan-400 text-white font-black py-4 rounded-2xl transition-all disabled:opacity-50"
+                    >
+                      {isSubmittingForgot ? 'Transmitting...' : 'Submit Reset Request'}
+                    </button>
+                  </form>
+                )}
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Forced Password Change Overlay */}
+        <AnimatePresence>
+          {showForcedChange && (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-[#020617]">
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                className="bg-slate-900 border border-white/10 p-10 rounded-[3rem] w-full max-w-lg shadow-2xl relative"
+              >
+                <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-20 h-20 rounded-3xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center shadow-2xl shadow-orange-500/20 border-4 border-slate-900">
+                  <ShieldAlert size={36} className="text-white" />
+                </div>
+                
+                <div className="text-center mb-10 pt-8">
+                  <h2 className="text-3xl font-black text-white tracking-tighter">Action Required</h2>
+                  <p className="text-slate-400 text-sm font-bold mt-2">Your current access key is temporary. Please establish a permanent secure password.</p>
+                </div>
+
+                <form onSubmit={handleForcedChange} className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-4">New Secure Password</label>
+                    <div className="relative">
+                      <input 
+                        type={showForcedPass ? "text" : "password"} 
+                        value={forcedForm.new_password}
+                        onChange={e => setForcedForm({...forcedForm, new_password: e.target.value})}
+                        required
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white outline-none focus:border-amber-500/50 transition-all font-medium pr-12"
+                        placeholder="••••••••" 
+                      />
+                      <button type="button" onClick={() => setShowForcedPass(!showForcedPass)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-amber-500 transition-colors">
+                        {showForcedPass ? <EyeOff size={20} /> : <Eye size={20} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-4">Confirm New Password</label>
+                    <input 
+                      type="password"
+                      value={forcedForm.confirm_password}
+                      onChange={e => setForcedForm({...forcedForm, confirm_password: e.target.value})}
+                      required
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white outline-none focus:border-amber-500/50 transition-all font-medium"
+                      placeholder="••••••••" 
+                    />
+                  </div>
+
+                  {forcedError && <p className="text-rose-500 text-[11px] text-center font-bold bg-rose-500/10 py-3 rounded-xl border border-rose-500/20">{forcedError}</p>}
+
+                  <button 
+                    type="submit" 
+                    disabled={isChangingForced}
+                    className="w-full bg-gradient-to-r from-amber-500 to-orange-600 text-white font-black py-5 rounded-2xl shadow-xl shadow-orange-500/10 transition-all disabled:opacity-50"
+                  >
+                    {isChangingForced ? 'Encrypting...' : 'Establish Secure Access'}
+                  </button>
+                </form>
+              </motion.div>
+            </div>
           )}
         </AnimatePresence>
       </main>

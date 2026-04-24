@@ -12,8 +12,10 @@ import {
   LogOut,
   UserCheck,
   BookOpen,
-  Gamepad2
+  Gamepad2,
+  Bell
 } from 'lucide-react';
+
 
 const SidebarItem = ({ icon: Icon, label, active, badge, onClick }) => (
   <motion.div
@@ -62,6 +64,8 @@ const Sidebar = ({ activeView = 'Dashboard', onNavigate, onLogout }) => {
         <SidebarItem icon={MessageCircle} label="Chat" active={activeView === 'Chat'} badge="12" onClick={() => onNavigate('Chat')} />
         <SidebarItem icon={StickyNote} label="Notes" active={activeView === 'Notes'} badge="3" onClick={() => onNavigate('Notes')} />
         <SidebarItem icon={BookOpen} label="Past Papers" active={activeView === 'PastPapers'} onClick={() => onNavigate('PastPapers')} />
+        <SidebarItem icon={Bell} label="Posts & Updates" active={activeView === 'Notices'} onClick={() => onNavigate('Notices')} />
+
       </nav>
 
       <div className="flex flex-col gap-1 border-t border-slate-100 pt-4">

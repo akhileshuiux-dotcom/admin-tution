@@ -26,7 +26,7 @@ const inputStyle = {
   borderRadius: 10, padding: '9px 14px', fontSize: 13, outline: 'none', boxSizing: 'border-box',
 };
 
-const TeacherNotesView = () => {
+const TeacherNotesView = ({ permissions }) => {
   const [resources, setResources] = useState([]);
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -34,6 +34,8 @@ const TeacherNotesView = () => {
   const [form, setForm] = useState({ title: '', file_type: 'pdf', url: '', course: '', section: 'notes' });
   const [selectedFile, setSelectedFile] = useState(null);
   const [saving, setSaving] = useState(false);
+
+  const hasPerm = (cat, key) => permissions?.[cat]?.[key] === true;
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -84,10 +86,12 @@ const TeacherNotesView = () => {
             <p style={{ color: '#94a3b8', fontSize: 12, margin: 0 }}>Upload course materials</p>
           </div>
         </div>
-        <button onClick={() => setShowForm(v => !v)}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', background: '#8b5cf6', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-          <Plus size={15} /> Add Resource
-        </button>
+        {hasPerm('notes', 'upload_notes') && (
+            <button onClick={() => setShowForm(v => !v)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', background: '#8b5cf6', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+            <Plus size={15} /> Add Resource
+            </button>
+        )}
       </div>
 
       {/* Form */}
@@ -182,9 +186,11 @@ const TeacherNotesView = () => {
                     </a>
                   </div>
                 </div>
-                <button onClick={() => del(res.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#cbd5e1', padding: 8, borderRadius: 8, transition: 'all 0.2s' }}>
-                  <Trash2 size={17} />
-                </button>
+                {hasPerm('notes', 'delete_notes') && (
+                    <button onClick={() => del(res.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#cbd5e1', padding: 8, borderRadius: 8, transition: 'all 0.2s' }}>
+                    <Trash2 size={17} />
+                    </button>
+                )}
               </motion.div>
             );
           })}
